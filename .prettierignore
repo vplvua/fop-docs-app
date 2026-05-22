@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+build
+coverage
+.vercel
+next-env.d.ts
+package-lock.json
+pnpm-lock.yaml
+
+# Installed by Claude Code plugins / skills — not ours to format.
+.claude/commands
+.claude/skills
+.claude/settings.local.json
+
+# External API specs — keep upstream formatting as-is.
+docs/api-docs
+
+# OpenSpec-generated artifacts.
+openspec/changes/archive

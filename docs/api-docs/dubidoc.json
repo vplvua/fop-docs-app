@@ -1,0 +1,4194 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Dubidoc",
+    "description": "Для того, щоб отримати API ключ, зайдіть в кабінет Dubidoc меню [\"Мої організації\"](https://my.dubidoc.com.ua/my-organizations), оберіть потрібну та перейдіть в розділ API ключ та натисніть **Створити новий ключ**.<br> API ключ потрібно передавати в заголовку **X-Access-Token**<br> А для коректної роботи від імені організації, потрібно передавати заголовок **X-Organization**<br> На цій же сторінці, можна скопіювати ID організації<br><br> *Увага, використовувати API можуть тільки організації, які мають активний Premium тариф.*",
+    "version": "2025.22.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.dubidoc.com.ua/"
+    }
+  ],
+  "paths": {
+    "/api/v1/documents": {
+      "get": {
+        "tags": [
+          "Document"
+        ],
+        "summary": "Список документів",
+        "description": "Отримати список всіх документів поточного користувача/організації",
+        "operationId": "getListOfDocuments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          },
+          {
+            "name": "order[title]",
+            "in": "query",
+            "description": "Сортування по назві документа",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "order[createdAt]",
+            "in": "query",
+            "description": "Сортування по даті створення документа",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "createdAt[after]",
+            "in": "query",
+            "description": "Обмежити вибірку документів по даті **після**",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "example": "2025-12-01"
+          },
+          {
+            "name": "createdAt[before]",
+            "in": "query",
+            "description": "Обмежити вибірку документів по даті **до**",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "example": "2025-12-31"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Пошук документів за Назвою/ЄДРПОУ/Email",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status[]",
+            "in": "query",
+            "description": "Фільтр по статусу",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "viewed",
+                  "signed",
+                  "filled",
+                  "approved",
+                  "rejected",
+                  "sent_for_sign",
+                  "sent_for_fill",
+                  "sent_for_approve",
+                  "waiting_for_view",
+                  "waiting_for_fill",
+                  "waiting_for_approve",
+                  "waiting_for_your_sign",
+                  "waiting_for_contractor_sign"
+                ]
+              }
+            }
+          },
+          {
+            "name": "tags.id[]",
+            "in": "query",
+            "description": "Фільтр по тегам документа",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DocumentListModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document"
+        ],
+        "summary": "Створити документ",
+        "description": "Завантажити новий документ в систему",
+        "operationId": "createDocument",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "file",
+                  "title",
+                  "filename"
+                ],
+                "properties": {
+                  "file": {
+                    "description": "Файл документа *(закодований в base64)*<br> Максимальний розмір файлу - 10 Mb.<br> Доступні розширення - pdf, doc, docx, xls, xlsx, txt, xml, jpg, png та p7s.",
+                    "type": "string",
+                    "format": "byte"
+                  },
+                  "title": {
+                    "description": "Назва документа",
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 3
+                  },
+                  "filename": {
+                    "description": "Назва файлу (з розширенням)",
+                    "type": "string",
+                    "example": "Договір №22.pdf"
+                  },
+                  "template": {
+                    "description": "IRI: Шаблон документа<br>\n*використовується для створення документа на основі шаблону.\nпри цьому, поля **file** та **filename** роблять не обов'язковими до заповнення, оскільки вони будуть\nотримані з самого шаблону*\n",
+                    "type": "string",
+                    "format": "iri-reference",
+                    "example": "/api/v1/templates/123e4567-e89b-12d3-a456-426655440000",
+                    "nullable": true
+                  },
+                  "documentType": {
+                    "description": "IRI: Тип документа<br>*один із присутніх в системі, список яких можна отримати виконавши [getListOfDocumentTypes](#operation/getListOfDocumentTypes)*",
+                    "type": "string",
+                    "format": "iri-reference",
+                    "example": "/api/v1/document-types/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "nullable": true
+                  },
+                  "date": {
+                    "description": "**Premium only**: Дата документа",
+                    "type": "string",
+                    "format": "date",
+                    "example": "2025-01-01",
+                    "nullable": true
+                  },
+                  "number": {
+                    "description": "**Premium only**: Номер документа",
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "nullable": true
+                  },
+                  "amount": {
+                    "description": "**Premium only**: Сума документа",
+                    "type": "integer",
+                    "maximum": 100000000,
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "callbackUrl": {
+                    "description": "URL-адреса зворотного виклику<br> *Якщо не передавати дане поле, воно буде успадковане з налаштувань організації*",
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 255,
+                    "nullable": true
+                  },
+                  "signatureType": {
+                    "description": "Тип підпису документа (внутрішній чи зовнішній)<br> *Якщо не передавати дане поле, воно буде успадковане з налаштувань організації*",
+                    "type": "string",
+                    "default": "external",
+                    "enum": [
+                      "internal",
+                      "external"
+                    ],
+                    "nullable": true
+                  },
+                  "workflowType": {
+                    "description": "**Premium only**: Тип робочого процесу<br>\n*(дозволяє визначити послідовність доступу/відправки документа його учасникам)*<br><br>\n**parallel** - паралельний доступ до документа.<br>\nНе вимагає використання методу [відправки](#operation/sendDocumentById), оскільки документ\nстає доступним учаснику одразу після його [додавання](#operation/addParticipantToDocumentById).<br><br>\n**sequential** - послідовний доступ до документа.<br>\nПри цьому типі робочого процесу, документ буде доступний тільки першому учаснику (згідно з пріоритетом)\nта до моменту, коли він (учасник) не виконає свою дію. Після виконання учасником своєї дії\n(перегляду/підпису) документ стає доступним наступному учаснику і так до моменту, коли всі учасники не виконають свою дію.<br>\nУвага, для запуску маршруту згідно даним типом робочого процесу, потрібно або [відправити документ](#operation/sendDocumentById)\n*(якщо перший підпис потрібний від учасника)* або [підписати документ](#operation/signDocumentById)\n*(якщо ваш підпис має бути першим)*<br>\nЯкщо, не виконувати жодної з вище перерахованих дій, документ лишиться доступним тільки його власнику.\n",
+                    "type": "string",
+                    "default": "sequential",
+                    "enum": [
+                      "parallel",
+                      "sequential"
+                    ],
+                    "nullable": true
+                  },
+                  "ownerNotification": {
+                    "description": "Чи відправляти сповіщення про підпис документа, власнику документа?",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "strictApprovalRules": {
+                    "description": "**Premium only**: Правила погодження документа<br>\nВикористовується тільки для документів, у маршруті яких, є дія \"погодити\".<br>\nЯкщо true - значить документ має буде відправлено згідно workflowType та вимагатиме погодження від всіх учасників.<br>\nЯкщо false - то після відправки, документ буде одразу надіслано всім учасникам з дією \"погодити\" не залежно від workflowType\nта очікуватиметься погодження лише від одного з них, перед тим, як надіслати даний документ іншим учасникам.\n",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "ownerSignatureRequired": {
+                    "description": "Чи потрібний підпис від власника документа?",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "canRefuseSignature": {
+                    "description": "Чи може отримувач відмовитися від підпису документа?",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "showQrCodeInProtocol": {
+                    "description": "Чи друкувати QR-код в протоколі?<br> *Якщо не передавати дане поле, воно буде успадковане з налаштувань організації*",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "participants": {
+                    "description": "**Premium only**: Маршрут документа<br>\n(*список учасників, яким буде надано доступ до документа*)<br><br>\nЯкщо передати тільки **email**, то даний документ може бути підписаний будь-яким ключем.<br>\nЯкщо передати тільки **edrpou**, то даний документ буде надіслано, тільки у випадку, якщо дана організація є в системі Dubidoc.<br>\nЯкщо вам потрібно, отримати підпис від конкретної організації або бути впевненим, що документ буде успішно надіслано організації,\nто потрібно передавати **email** та **edrpou**.\n",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/CreateParticipantModel"
+                    }
+                  },
+                  "attributes": {
+                    "description": "**Premium only**: Атрибути документа<br>\nСписок власних атрибутів та їх значень\n",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/CreateAttributeModel"
+                    }
+                  },
+                  "tags": {
+                    "description": "Теги (мітки) документа<br> *Будуть прикріплені до документа в момент його створення*<br> *Отримати можна, виконавши запит [getListOfTags](#operation/getListOfTags)*",
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "iri-reference"
+                    },
+                    "example": "/api/v1/tags/3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentBaseModel"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DocumentCreatedModel"
+                    },
+                    {
+                      "required": [
+                        "attributes"
+                      ],
+                      "properties": {
+                        "attributes": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CreateAttributeModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        },
+        "callbacks": {
+          "documentEvent": {
+            "{$request.body#/callbackUrl}": {
+              "post": {
+                "summary": "Опис структури callback події",
+                "description": "Callback відправляється одразу після настання події, проте є моменти коли ми не можемо його одразу надіслати. Тому, у нас передбачена система повторного надсилання callback-ів<br> Перші 5 спроб відправляються з періодичністю раз в 1 хвилину, всі інші спроби - раз в 10 хвилин.<br> Максимальна к-сть спроб - 32. У відповідь на callback система очікує 2xx status code. Тіло відповіді не перевіряється.",
+                "requestBody": {
+                  "required": true,
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "action": {
+                            "type": "string",
+                            "enum": [
+                              "failed_signature",
+                              "signature",
+                              "refused"
+                            ],
+                            "description": "Тип події, яка настала"
+                          },
+                          "payload": {
+                            "description": "Об'єкт в якому міститься інформація про подію",
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "title": "signature",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "example": 12345678,
+                                    "minLength": 8,
+                                    "maxLength": 10,
+                                    "description": "ЄДРПОУ/ІПН учасника підписанта"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "description": "Назва організації підписанта"
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "format": "email",
+                                    "nullable": true,
+                                    "description": "Email учасника підписанта"
+                                  },
+                                  "isStamp": {
+                                    "type": "boolean",
+                                    "description": "Інформація про ключ, підпис чи печатка."
+                                  },
+                                  "signedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "Дата підпису"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "name",
+                                  "isStamp",
+                                  "signedAt"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "title": "refused",
+                                "properties": {
+                                  "comment": {
+                                    "type": "string",
+                                    "description": "Причина відмови від підпису"
+                                  },
+                                  "executionDate": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "Дата відмови від підпису"
+                                  }
+                                },
+                                "required": [
+                                  "comment",
+                                  "executionDate"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "title": "failed_signature",
+                                "properties": {
+                                  "expectedCode": {
+                                    "type": "string",
+                                    "example": 12345678,
+                                    "minLength": 8,
+                                    "maxLength": 10,
+                                    "description": "Очікуваний ЄДРПОУ/ІПН учасника підписанта"
+                                  },
+                                  "receivedCode": {
+                                    "type": "string",
+                                    "example": 12345678,
+                                    "minLength": 8,
+                                    "maxLength": 10,
+                                    "description": "Отриманий ЄДРПОУ/ІПН учасника підписанта"
+                                  }
+                                },
+                                "required": [
+                                  "expectedCode",
+                                  "receivedCode"
+                                ]
+                              }
+                            ]
+                          },
+                          "documentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "Ідентифікатор документа ініціатора події"
+                          }
+                        },
+                        "required": [
+                          "action",
+                          "payload",
+                          "documentId"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Success"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-types": {
+      "get": {
+        "tags": [
+          "Document",
+          "DocumentType"
+        ],
+        "summary": "Типи документа",
+        "description": "Отримати список всіх типів документу, які можуть бути передані при створенні документа",
+        "operationId": "getListOfDocumentTypes",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          },
+          {
+            "name": "order[name]",
+            "in": "query",
+            "description": "Сортування по назві",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DocumentTypeSingleModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}": {
+      "get": {
+        "tags": [
+          "Document"
+        ],
+        "summary": "Деталі документа",
+        "description": "Отримати детальну інформацію про документ",
+        "operationId": "getDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSingleModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Document"
+        ],
+        "summary": "Редагувати документ",
+        "description": "Зміна даних про вже завантажений документ",
+        "operationId": "updateDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "title": {
+                    "description": "Назва документа",
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 3
+                  },
+                  "date": {
+                    "description": "**Premium only**: Дата документа",
+                    "type": "string",
+                    "format": "date",
+                    "example": "2025-01-01",
+                    "nullable": true
+                  },
+                  "number": {
+                    "description": "**Premium only**: Номер документа",
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "nullable": true
+                  },
+                  "amount": {
+                    "description": "**Premium only**: Сума документа",
+                    "type": "integer",
+                    "maximum": 100000000,
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "documentType": {
+                    "description": "IRI: Тип документа<br>*один із присутніх в системі, список яких можна отримати виконавши [getListOfDocumentTypes](#operation/getListOfDocumentTypes)*",
+                    "type": "string",
+                    "format": "iri-reference",
+                    "example": "/api/v1/document-types/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSingleModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/sign": {
+      "post": {
+        "tags": [
+          "Document",
+          "Signature"
+        ],
+        "summary": "Підписати документ",
+        "description": "Метод дозволяє підписати поточний документ<br> Підписувати потрібно поле *document.file* (hash файлу)<br> *Увага, підписання можливе виключно через ІІТ-бібліотеку, або хмарні сервіси підпису, такі як Diia, SmartID та інші.*",
+        "operationId": "signDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "signature"
+                ],
+                "properties": {
+                  "signature": {
+                    "description": "Сигнатура підпису документа отримана від бібліотеки підпису<br> *закодована в base64*",
+                    "type": "string",
+                    "format": "byte"
+                  },
+                  "isStamp": {
+                    "description": "Ознака підпису-печатки",
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/send": {
+      "post": {
+        "tags": [
+          "Document"
+        ],
+        "summary": "Відправити документ",
+        "description": "**Premium only**<br>\nДаний метод, дозволяє відправити документ згідно його маршруту та пріорітету учасників<br> \nВ Premium версії Dubidoc всі маршрути є **лінійними**, а отже після завантаження документа в систему він\nдостуний **тільки власнику** і лише після **підпису/відправки** документ стає доступним першому учаснику маршруту<br>\nДаний метод, потрібно використовувати тільки раз для запуску document-flow і не потрібно використовувати,\nякщо перший підпис має бути від власника документа.\n",
+        "operationId": "sendDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/EmptyBody"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/download": {
+      "get": {
+        "tags": [
+          "Document",
+          "Download"
+        ],
+        "summary": "Завантажити документ",
+        "description": "Завантажити (скачати) файл документа з системи Dubidoc",
+        "operationId": "downloadDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Дана властивість використовується для побудови **Content-Disposition** заголовку відповіді",
+            "schema": {
+              "type": "string",
+              "default": "attachment",
+              "enum": [
+                "inline",
+                "attachment"
+              ]
+            }
+          },
+          {
+            "name": "file",
+            "in": "query",
+            "description": "Дозволяє обрати, який тип документу слід згенерувати на скачування",
+            "schema": {
+              "type": "string",
+              "default": "original",
+              "enum": [
+                "signed",
+                "original",
+                "protocol",
+                "printable"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Content-Type": {
+                "description": "Увага, даний заголовок є динамічним і буде підставлятися в залежності від переданого type та/або розширення документа.<br>За замовчування підставляється саме розширення файлу, що скачується або application/zip якщо type=signed",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "attachment; filename=55e12e07-c8cb-4a20-b97d-abae48541753.pdf; filename*=utf-8''invoice-1000.pdf",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/signatures": {
+      "get": {
+        "tags": [
+          "Document",
+          "Signature"
+        ],
+        "summary": "Підписи документа",
+        "description": "Отримати інформацію про підписи, що містить документ",
+        "operationId": "getDocumentSignaturesById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SignatureModel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/participants": {
+      "get": {
+        "tags": [
+          "Document",
+          "Participant"
+        ],
+        "summary": "Учасники документа",
+        "description": "Отримати інформацію про маршрут документа та його поточний стан",
+        "operationId": "getDocumentParticipantsById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ParticipantModel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document",
+          "Participant"
+        ],
+        "summary": "Добавити учасника",
+        "description": "Метод дозволяє добавити учасника до маршруту документа<br> Поділитися документом з іншим користувачем по Email або організацією по ЄДРПОУ",
+        "operationId": "addParticipantToDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParticipantModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParticipantModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/to-archive": {
+      "post": {
+        "tags": [
+          "Document",
+          "Archive"
+        ],
+        "summary": "Архівувати документ",
+        "description": "Перемістити документ в архів<br> *дія виконується в для поточного користувача/організації*",
+        "operationId": "archiveDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "folderId": {
+                    "description": "**Premium only**: Ідентифікатор папки в середині архіву<br>\n*Ідентифікатор папки можна отримати, виконавши запит [getListOfFolders](#operation/getListOfFolders)*\n",
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSingleModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/from-archive": {
+      "post": {
+        "tags": [
+          "Document",
+          "Archive"
+        ],
+        "summary": "Розархівувати документ",
+        "description": "Перемістити документ з архіву в загальний список документів<br> *дія виконується в для поточного користувача/організації*",
+        "operationId": "unarchiveDocumentById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/EmptyBody"
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSingleModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/archive/documents": {
+      "post": {
+        "tags": [
+          "Document",
+          "Archive"
+        ],
+        "summary": "Архівувати/Розархівувати документ(и)",
+        "description": "Метод дозволяє перекинути в або з архіву масив документів",
+        "operationId": "archiveDocuments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "action",
+                  "documentsIds"
+                ],
+                "properties": {
+                  "action": {
+                    "description": "Дія для виконання (в або з архіву)",
+                    "type": "string",
+                    "enum": [
+                      "to-archive",
+                      "from-archive"
+                    ]
+                  },
+                  "folderId": {
+                    "description": "**Premium only**: Ідентифікатор папки в середині архіву",
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "documentsIds": {
+                    "description": "Масив ідентифікаторів документа",
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 50,
+                    "minItems": 1
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SuccessResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations": {
+      "get": {
+        "tags": [
+          "Organization"
+        ],
+        "summary": "Список організацій",
+        "description": "Метод дозволяє отримати список всіх організацій поточного користувача<br> *Увага, заголовок **X-Organization** потрібно передавати для перевірки валідності API-ключа.*",
+        "operationId": "getListOfOrganizations",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OrganizationListModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{id}": {
+      "get": {
+        "tags": [
+          "Organization"
+        ],
+        "summary": "Деталі організації",
+        "description": "Метод дозволяє отримати детальну інформацію про організацію<br> *Увага, заголовок **X-Organization** потрібно передавати для перевірки валідності API-ключа.*",
+        "operationId": "getOrganizationById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSingleModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Список шаблонів",
+        "description": "Метод повертає список всіх шаблонів поточної організації<br> *Якщо шаблон було завантажено не в організаційному режимі, він не повернеться в списку.*<br> *Зверніться в службу підтримки, для того, щоб ваш шаблон прикріпили до потрібної вам організації.*",
+        "operationId": "getListOfTemplates",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TemplateListModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/templates/{id}": {
+      "get": {
+        "tags": [
+          "Template"
+        ],
+        "summary": "Деталі шаблону",
+        "description": "Метод повертає шаблон (сам файл) та його поля (налаштування).",
+        "operationId": "getTemplateById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSingleModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/templates/{id}/document": {
+      "post": {
+        "tags": [
+          "Template",
+          "Document"
+        ],
+        "summary": "Створити документ із шаблону",
+        "description": "Метод дозволяє створити документ на основі шаблону",
+        "operationId": "createDocumentFromTemplateById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "description": "Увага, власником документа створеного на основі шаблону буде власник шаблону!<br> Тобто, якщо шаблон відноситься до Організації А, то саме вона буде і власником документа.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "scale": {
+                    "description": "Zoom для коректного рендеру PDF<br> *не передавайте дане поле, якщо не впевнені, які значення слід використовувати*",
+                    "type": "number",
+                    "format": "float",
+                    "default": 0.75,
+                    "maximum": 2,
+                    "minimum": 0.1,
+                    "nullable": true
+                  },
+                  "values": {
+                    "description": "Масив значень для полів шаблону, щоб створити документ одразу із пред-заповненими полями.<br> *Передавати його не обов'язково. Також не обов'язково передавати всі поля шаблону.*<br> *Якщо значення не були передані або були передані не повністю, тоді поля, що залишись, мають бути заповнені учасником документа.*",
+                    "type": "array",
+                    "items": {
+                      "required": [
+                        "id",
+                        "value"
+                      ],
+                      "properties": {
+                        "id": {
+                          "description": "Ідентифікатор поля шаблону",
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "value": {
+                          "description": "Значення, яке потрібно зберегти до даного поля",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "daysForPublicAccess": {
+                    "description": "Термін дії документа по публічному посиланню (у днях)<br> *0 - публічне посилання не буде згенеровано*",
+                    "type": "integer",
+                    "default": 365,
+                    "maximum": 365,
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "documentDto": {
+                    "description": "Об'єкт додаткових налаштувань для документа, що буде створено",
+                    "properties": {
+                      "date": {
+                        "description": "**Premium only**: Дата документа",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-01-01",
+                        "nullable": true
+                      },
+                      "number": {
+                        "description": "**Premium only**: Номер документа",
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "nullable": true
+                      },
+                      "amount": {
+                        "description": "**Premium only**: Сума документа",
+                        "type": "integer",
+                        "maximum": 100000000,
+                        "minimum": 0,
+                        "nullable": true
+                      },
+                      "isSignatureRequired": {
+                        "description": "**Premium only**: Чи потрібний підпис від цього учасника?",
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "documentType": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/DocumentTypeSingleModel"
+                          },
+                          {
+                            "type": "object",
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "participants": {
+                        "description": "Масив учасників, яким буде надано доступ після створення документа",
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/CreateParticipantModel"
+                        }
+                      }
+                    },
+                    "type": "object",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "documentId"
+                  ],
+                  "properties": {
+                    "documentId": {
+                      "description": "Ідентифікатор створеного документа на основі шаблону",
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "documentLink": {
+                      "description": "Публічне посилання на створений документ на основі шаблону.<br> *Не генерується, якщо **daysForPublicAccess=0***",
+                      "type": "string",
+                      "format": "url",
+                      "nullable": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/purchase": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Купівля послуг",
+        "description": "Даний метод дозволяє оформити підписку на Premium або купити додаткові документи",
+        "operationId": "purchasePremium",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "description": "Тип послуги<br> *Варто розуміти, **type=tariff** доступний тільки для переходу з **free** на **premium**<br> Якщо організація вже користується premium тарифом то рахунок на продовження тарифу буде згенеровано автоматично за 10 днів до закінчення підписки*",
+                    "type": "string",
+                    "enum": [
+                      "tariff",
+                      "document"
+                    ]
+                  },
+                  "count": {
+                    "description": "Кількість документів, які необхідно докупити<br> Термін дії додатково докуплених документів - 1 рік<br> *обов'язково тільки для **type=document***",
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "tariffId": {
+                    "description": "Ідентифікатор тарифу на який бажаєте оформити підписку<br> Зі списком тарифів можна ознайомитися тут [getListOfTariffs](#operation/getListOfTariffs)<br> *обов'язково тільки для **type=tariff***",
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "invoiceId": {
+                      "description": "Ідентифікатор рахунку",
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/dashboard": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Дешборд",
+        "description": "Метод повертає деталізовану інформацію про білінг організації<br> Сюди включено поточний баланс організації та список активних періодів організації",
+        "operationId": "getBillingDashboard",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "balance",
+                    "periods",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "balance": {
+                      "description": "Сума доступних коштів на балансі організації<br> *Увага, повертається ціле число, тобто 100 = 1 грн. 00 коп.*",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "periods": {
+                      "description": "Список активних періодів організації",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PeriodSingleModel"
+                      }
+                    },
+                    "invoice": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/InvoiceShortModel"
+                        }
+                      ],
+                      "nullable": true,
+                      "description": "Рахунок генерується системою автоматично за 10 днів до закінчення Premium підписки"
+                    },
+                    "expiresAt": {
+                      "description": "Дата закінчення тарифного періоду",
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/consumptions": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Споживання",
+        "description": "Метод повертає кількість використаних та доступних до відправки документів<br> Даний метод повертає сумарні дані по всіх активних періодах *(тобто тарифні або докуплені та не протерміновані документи)*<br> Дізнатися залишок, можна за формулою **available = limit - used**",
+        "operationId": "getBillingConsumptions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "used",
+                    "limit"
+                  ],
+                  "properties": {
+                    "used": {
+                      "description": "Кількість використаних документів в активному періоді",
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "description": "Загальна кількість доступних документів в активному періоді",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/invoices/{id}/pay-by-bank": {
+      "post": {
+        "tags": [
+          "Invoice",
+          "Billing"
+        ],
+        "summary": "Оплатити рахунок банківським переказом",
+        "description": "Метод генерує файловий рахунок (PDF) з реквізитами для оплати",
+        "operationId": "payInvoiceByBankTransfer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/EmptyBody"
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Content-Type": {
+                "description": "application/pdf",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "inline; filename=invoice-1000.pdf",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/links": {
+      "post": {
+        "tags": [
+          "Document",
+          "DocumentLink"
+        ],
+        "summary": "Згенерувати публічне посилання для документа",
+        "description": "Метод дозволяє згенерувати публічне посилання на документ<br> *Увага, будь який користувач (в т.ч. не авторизований) зможе відкрити дане посилання.*<br><br> Наразі система генерує унікальне посилання в рамках однієї дії. Тобто, якщо декілька разів викликати даний метод з action=sign то у відповідь буде отримано одне і те ж посилання, проте, якщо вказати іншу дію, наприклад action=view ви отримаєте інше посилання з іншим типом доступу. Це зроблено для того, щоб наші користувачі мали різні посилання під різні дії (наприклад посилання на перегляд кидаємо всім хто дотичний до документа, а на підпис лише тим, від кого він потрібний).",
+        "operationId": "generateDocumentLink",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "description": "Тип доступу до документа за даним посиланням",
+                    "type": "string",
+                    "enum": [
+                      "sign",
+                      "view",
+                      "fill",
+                      "approve"
+                    ]
+                  },
+                  "days": {
+                    "description": "Термін дії даного посилання (в днях)<br> По закінченню терміну дії, посилання перестане бути активним і доступ до документа на надаватиметься.<br><br> *Якщо не передавати дане значення або передати null тоді дана властивість буде отримана з налаштувань організації*",
+                    "type": "integer",
+                    "maximum": 365,
+                    "minimum": 1,
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "link"
+                  ],
+                  "properties": {
+                    "link": {
+                      "description": "Посилання на документ",
+                      "type": "string",
+                      "format": "url"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Document",
+          "DocumentLink"
+        ],
+        "summary": "Вилучити публічні посилання для документа",
+        "description": "Відкликати публічний доступ до документа за посиланням.<br> *Увага, абсолютні всі попередньо згенеровані посилання стануть неактивними.*",
+        "operationId": "deleteDocumentLink",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SuccessResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{documentId}/attributes": {
+      "get": {
+        "tags": [
+          "Document",
+          "DocumentAttribute"
+        ],
+        "summary": "Список атрибутів документа",
+        "description": "Метод дозволяє отримати список атрибутів, що були додані до документа",
+        "operationId": "getDocumentAttributes",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/documentId"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AttributeSingleModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document",
+          "DocumentAttribute"
+        ],
+        "summary": "Добавити атрибут до документа",
+        "description": "Метод дозволяє добавити новий атрибут до вже існуючого документа",
+        "operationId": "addDocumentAttribute",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/documentId"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttributeModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributeSingleModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{documentId}/attributes/{attributeId}": {
+      "put": {
+        "tags": [
+          "Document",
+          "DocumentAttribute"
+        ],
+        "summary": "Оновити дані атрибута",
+        "description": "Метод дозволяє оновити дані про вже існуючий атрибут документа",
+        "operationId": "updateDocumentAttribute",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/documentId"
+          },
+          {
+            "$ref": "#/components/parameters/attributeId"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "description": "Увага, Ви можете передавати які всі поля, так і тільки ті, які потрібно змінити.<br>\nПриклад часткового оновлення: *{\"value\": \"v1.0.0\"}*\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttributeModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributeSingleModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Document",
+          "DocumentAttribute"
+        ],
+        "summary": "Видалити атрибут документа",
+        "description": "Метод дозволяє видалити вже доданий до документа атрибут",
+        "operationId": "deleteDocumentAttribute",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/documentId"
+          },
+          {
+            "$ref": "#/components/parameters/attributeId"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/EmptyResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/comments": {
+      "get": {
+        "tags": [
+          "Document",
+          "Comment"
+        ],
+        "summary": "Список коментарів",
+        "description": "**Premium only**<br>\nМетод дозволяє отримати список всіх коментарів до документа.\n",
+        "operationId": "getDocumentComments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/CommentSingleModel"
+                              },
+                              {
+                                "properties": {
+                                  "replies": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/components/schemas/CommentSingleModel"
+                                    }
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document",
+          "Comment"
+        ],
+        "summary": "Коментувати документ",
+        "description": "**Premium only**<br>\nМетод дозволяє добавити коментар до документа.\n",
+        "operationId": "createDocumentComment",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "description": "Текст коментаря",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "replyId": {
+                    "description": "Ідентифікатор батьківського коментаря",
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentSingleModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts": {
+      "get": {
+        "tags": [
+          "Document",
+          "Contact"
+        ],
+        "summary": "Список контактів",
+        "description": "**Premium only**<br>\nМетод повертає список контактів організації\n",
+        "operationId": "getContacts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ContactSingleModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document",
+          "Contact"
+        ],
+        "summary": "Створити контакт",
+        "description": "**Premium only**<br>\nМетод дозволяє створити новий контакт організації\n",
+        "operationId": "createContact",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "description": "Назва контакту",
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                  },
+                  "email": {
+                    "description": "Email контакту<br> *Обовязково, якщо не передавати ЄДРПОУ*",
+                    "type": "string",
+                    "format": "email",
+                    "nullable": true
+                  },
+                  "edrpou": {
+                    "description": "ЄДРПОУ контакту<bR> *Обовязково, якщо не передавати Email*",
+                    "type": "string",
+                    "maxLength": 10,
+                    "minLength": 8,
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactSingleModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/folders": {
+      "get": {
+        "tags": [
+          "Document",
+          "Folder"
+        ],
+        "summary": "Список папок",
+        "description": "**Premium only**<br>\nМетод повертає список папок організації в залежності від переданої області видимості.\n",
+        "operationId": "getListOfFolders",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          },
+          {
+            "$ref": "#/components/parameters/folderScope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/FolderListModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document",
+          "Folder"
+        ],
+        "summary": "Створити папку",
+        "description": "**Premium only**<br>\nМетод дозволяє створити папку для більш зручного зберігання документів\n",
+        "operationId": "createFolder",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "name",
+                  "scope"
+                ],
+                "properties": {
+                  "name": {
+                    "description": "Назва папки",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                  },
+                  "scope": {
+                    "description": "Область видимості папки",
+                    "type": "string",
+                    "enum": [
+                      "archive",
+                      "documents"
+                    ]
+                  },
+                  "parentId": {
+                    "description": "Ідентифікатор батьківської папки",
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderSingleModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/tags": {
+      "get": {
+        "tags": [
+          "Document",
+          "Tag"
+        ],
+        "summary": "Список міток",
+        "description": "Метод повертає список всіх міток поточного користувача.<br> Увага, мітки прив'язуються виключно до користувача, а організація передається тільки для ідентифікації API ключа.",
+        "operationId": "getListOfTags",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginationResponse"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TagListModel"
+                          }
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/ToManyRequests"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EmptyRequest": {
+        "type": "object"
+      },
+      "SuccessResponse": {
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "PaginationResponse": {
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "required": [
+              "totalItems",
+              "currentPage",
+              "itemsPerPage"
+            ],
+            "properties": {
+              "totalItems": {
+                "type": "integer"
+              },
+              "currentPage": {
+                "type": "integer"
+              },
+              "itemsPerPage": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "BaseErrorResponse": {
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "description": "Type of error",
+            "type": "string"
+          },
+          "status": {
+            "description": "The same as response status code",
+            "type": "integer"
+          },
+          "detail": {
+            "description": "Detail error message",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ValidationErrorResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseErrorResponse"
+          },
+          {
+            "required": [
+              "violations"
+            ],
+            "properties": {
+              "violations": {
+                "type": "array",
+                "items": {
+                  "required": [
+                    "code",
+                    "message",
+                    "propertyPath"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "message": {
+                      "description": "Помилка",
+                      "type": "string"
+                    },
+                    "propertyPath": {
+                      "description": "Назва поля",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "UnauthorizedError": {
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserShortModel": {
+        "description": "Інформацію про користувача-учасника",
+        "required": [
+          "id",
+          "email"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор користувача",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "ПІБ користувача<br> *вказується користувачем в налаштуваннях системи Dubidoc*",
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "email": {
+            "description": "Email користувача",
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "type": "object"
+      },
+      "ParticipantModel": {
+        "required": [
+          "id",
+          "user",
+          "status",
+          "role",
+          "priority",
+          "isSignatureRequired"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор учасника",
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserShortModel"
+          },
+          "organization": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationShortModel"
+              }
+            ],
+            "nullable": true,
+            "description": "Інформація про організацію-учасника"
+          },
+          "result": {
+            "description": "Інформацію про виконання дії учасником<br> *заповнюється тільки після настанні дії - перегляду, підпису, відмови чи анулювання*",
+            "required": [
+              "comment",
+              "executionDate"
+            ],
+            "properties": {
+              "comment": {
+                "description": "Коментар учасника (вказується при відхиленні документа)",
+                "type": "string"
+              },
+              "executionDate": {
+                "description": "Дата виконання дії учасником",
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "status": {
+            "description": "Статус учасника",
+            "type": "string",
+            "enum": [
+              "created",
+              "pending",
+              "signed",
+              "viewed",
+              "filled",
+              "approved",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "role": {
+            "description": "Роль учасника",
+            "type": "string",
+            "enum": [
+              "ROLE_OWNER",
+              "DOCUMENT_FILLER",
+              "DOCUMENT_SIGNER",
+              "DOCUMENT_APPROVER",
+              "DOCUMENT_VIEWER"
+            ]
+          },
+          "edrpou": {
+            "description": "ЄДРПОУ організації / ІПН учасника",
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 8,
+            "example": 12345678,
+            "nullable": true
+          },
+          "priority": {
+            "description": "Пріоритет учасника<br> *ASC сортування*",
+            "type": "integer",
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0
+          },
+          "isSignatureRequired": {
+            "description": "Чи потрібний підпис від цього учасника?",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "CreateParticipantModel": {
+        "required": [
+          "action",
+          "email",
+          "edrpou"
+        ],
+        "properties": {
+          "action": {
+            "description": "Дія, яку має виконати учасник",
+            "type": "string",
+            "enum": [
+              "sign",
+              "view",
+              "approve"
+            ]
+          },
+          "email": {
+            "description": "Email учасника<br> *Обовязково, коли не передається ЄДРПОУ*",
+            "type": "string",
+            "format": "email"
+          },
+          "edrpou": {
+            "description": "ЄДРПОУ організації<br> *Обовязково, коли не передається Email*",
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 8,
+            "example": 12345678
+          },
+          "priority": {
+            "description": "Пріоритет учасника<br> *ASC сортування*",
+            "type": "integer",
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0
+          },
+          "isSignatureRequired": {
+            "description": "Чи потрібний підпис від цього учасника?",
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "type": "object"
+      },
+      "CreateAttributeModel": {
+        "required": [
+          "key",
+          "value",
+          "visible"
+        ],
+        "properties": {
+          "key": {
+            "description": "Ключ атрибуту (довільне значення)",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "value": {
+            "description": "Значення атрибуту (довільне значення)",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "nullable": true
+          },
+          "visible": {
+            "description": "Видимість атрибута<br> public - атрибут бачать всі учасники документа<br> private - атрибут бачать лише учасники організації власника документа",
+            "type": "string",
+            "default": "public",
+            "enum": [
+              "public",
+              "private"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AttributeSingleModel": {
+        "allOf": [
+          {
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "description": "Ідентифікатор атрибута",
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/CreateAttributeModel"
+          }
+        ]
+      },
+      "DocumentTypeSingleModel": {
+        "description": "IRI: Тип документа",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор типу документа",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва типу документа",
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "type": "object"
+      },
+      "DocumentBaseModel": {
+        "required": [
+          "id",
+          "title",
+          "file",
+          "signatureType",
+          "createdAt",
+          "fileExtension"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор документа",
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentTypeSingleModel"
+              },
+              {
+                "type": "object",
+                "nullable": true
+              }
+            ]
+          },
+          "signatureType": {
+            "description": "Тип підпису документа (внутрішній чи зовнішній)",
+            "type": "string",
+            "default": "external",
+            "enum": [
+              "internal",
+              "external"
+            ]
+          },
+          "title": {
+            "description": "Назва документа",
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 3
+          },
+          "date": {
+            "description": "**Premium only**: Дата документа",
+            "type": "string",
+            "format": "date",
+            "example": "2025-01-01",
+            "nullable": true
+          },
+          "number": {
+            "description": "**Premium only**: Номер документа",
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "nullable": true
+          },
+          "amount": {
+            "description": "**Premium only**: Сума документа",
+            "type": "integer",
+            "maximum": 100000000,
+            "minimum": 0,
+            "nullable": true
+          },
+          "tags": {
+            "description": "Теги (мітки) документа",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagSingleModel"
+            }
+          },
+          "file": {
+            "description": "Hash файлу<br> *Використовується для ІІТ бібліотеки підпису*",
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileExtension": {
+            "description": "Розширення файлу документа",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DocumentListModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DocumentBaseModel"
+          },
+          {
+            "required": [
+              "status",
+              "archived",
+              "refused",
+              "thumbnailUrl",
+              "hasPublicAccess",
+              "hasParticipants",
+              "templatedDocument",
+              "canSend",
+              "canDelete",
+              "canCancel",
+              "counterparties"
+            ],
+            "properties": {
+              "status": {
+                "description": "Статус документа<br> *Визначається для поточного авторизованого користувача/організації*",
+                "type": "string",
+                "enum": [
+                  "new",
+                  "viewed",
+                  "signed",
+                  "filled",
+                  "approved",
+                  "rejected",
+                  "sent_for_sign",
+                  "sent_for_fill",
+                  "sent_for_approve",
+                  "waiting_for_view",
+                  "waiting_for_fill",
+                  "waiting_for_approve",
+                  "waiting_for_your_sign",
+                  "waiting_for_contractor_sign"
+                ]
+              },
+              "archived": {
+                "description": "Чи архівовано документ?<br> *Визначається для поточного авторизованого користувача/організації*",
+                "type": "boolean"
+              },
+              "refused": {
+                "description": "Чи було відхилено документ будь-яким з учасників?<br> *Відхилення документу можливо тільки, якщо в момент створення документа було передано поле **canRefuseSignature=true***",
+                "type": "boolean",
+                "default": false
+              },
+              "thumbnailUrl": {
+                "description": "URL посилання на прев'ю зображення документа",
+                "type": "string",
+                "format": "uri",
+                "nullable": true
+              },
+              "hasPublicAccess": {
+                "description": "Чи доступний даний документ по публічному посиланню?",
+                "type": "boolean"
+              },
+              "hasParticipants": {
+                "description": "Чи даний документ має учасників?",
+                "type": "boolean"
+              },
+              "templatedDocument": {
+                "description": "Чи був документ створений на основі шаблону?",
+                "type": "boolean"
+              },
+              "canSend": {
+                "description": "Чи може поточний користувач відправити даний документ?",
+                "type": "boolean"
+              },
+              "canDelete": {
+                "description": "Чи може поточний користувач видалити даний документ?",
+                "type": "boolean"
+              },
+              "canCancel": {
+                "description": "Чи може поточний користувач анулювати даний документ?",
+                "type": "boolean"
+              },
+              "counterparties": {
+                "description": "Список контрагентів<br> *Email або ПІБ контрагента*<br> *відображається динамічно в залежності від користувача, що виконує запит*",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "currentUser": {
+                "description": "Відношення між поточним користувачем/організацією та документом",
+                "required": [
+                  "role",
+                  "status"
+                ],
+                "properties": {
+                  "role": {
+                    "description": "Роль поточного користувача/організації в цьому документі",
+                    "type": "string",
+                    "enum": [
+                      "ROLE_OWNER",
+                      "DOCUMENT_FILLER",
+                      "DOCUMENT_SIGNER",
+                      "DOCUMENT_APPROVER",
+                      "DOCUMENT_VIEWER"
+                    ]
+                  },
+                  "status": {
+                    "description": "Статус поточного користувача/організації в цьому документі",
+                    "type": "string",
+                    "enum": [
+                      "created",
+                      "pending",
+                      "signed",
+                      "viewed",
+                      "filled",
+                      "approved",
+                      "rejected",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "type": "object",
+                "nullable": true
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "DocumentSingleModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DocumentListModel"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentCreatedModel"
+          },
+          {
+            "required": [
+              "fields",
+              "attributes",
+              "downloadLink",
+              "cancellationAct",
+              "canComment",
+              "canFillFields",
+              "unresolvedCommentCount",
+              "allowedSignatureMethods"
+            ],
+            "properties": {
+              "fields": {
+                "description": "Дані про поля, які заповнювали учасники шаблону<br> *доступно тільки, якщо документ було створено на основі шаблону*",
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DocumentFieldModel"
+                }
+              },
+              "attributes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateAttributeModel"
+                }
+              },
+              "downloadLink": {
+                "description": "Посилання на файл<br> *використовується для відображення документа в iFrame*",
+                "type": "string",
+                "format": "uri"
+              },
+              "cancellationAct": {
+                "description": "Чи є даний документ, актом анулювання іншого документа?",
+                "type": "boolean"
+              },
+              "canComment": {
+                "description": "Чи може поточний користувач/організація коментувати даний документ?",
+                "type": "boolean"
+              },
+              "canFillFields": {
+                "description": "Чи можна заповнити даний документ?<br> *Можна тільки, якщо документ створено на основі шаблону*<br> *А також, якщо документ ще не було заповнено*.",
+                "type": "boolean"
+              },
+              "unresolvedCommentCount": {
+                "description": "Кількість невирішених (не прочитаних) коментів",
+                "type": "integer"
+              },
+              "allowedSignatureMethods": {
+                "description": "Список дозволених методів для підпису документа (наслідується з налаштувань організації, що завантажила документ)",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "iit",
+                    "diia",
+                    "mono",
+                    "smart_id"
+                  ]
+                },
+                "default": [
+                  "iit",
+                  "diia",
+                  "mono",
+                  "smart_id"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "DocumentCreatedModel": {
+        "required": [
+          "state",
+          "canRefuseSignature"
+        ],
+        "properties": {
+          "state": {
+            "description": "Стан документа",
+            "type": "string",
+            "default": "new",
+            "enum": [
+              "new",
+              "sent",
+              "signed"
+            ]
+          },
+          "canRefuseSignature": {
+            "description": "Чи може отримувач відмовитися від підпису документа?",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "DocumentFieldModel": {
+        "description": "Дані про поля, які заповнювали користувачі<br> *доступно тільки, якщо документ було створено на основі шаблону*",
+        "required": [
+          "id",
+          "key",
+          "value",
+          "required"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор поля",
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "description": "Ключ поля<br> *ключ береться з template.field[idx].key*",
+            "type": "string"
+          },
+          "value": {
+            "description": "Значення поля",
+            "type": "string"
+          },
+          "required": {
+            "description": "Обовязковість поля до заповнення<br> *поле наслідується з template.field[idx].required*",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "OrganizationListModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OrganizationShortModel"
+          },
+          {
+            "required": [
+              "canActivateTrial",
+              "currentUserRole",
+              "hasProVersion"
+            ],
+            "properties": {
+              "deletedAt": {
+                "description": "Дата заявки на видалення організації",
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "canActivateTrial": {
+                "description": "Ознака, чи може організація активувати випробувальний термін для Premium тарифу",
+                "type": "boolean"
+              },
+              "currentUserRole": {
+                "description": "Роль поточного користувача в даній організації",
+                "type": "string",
+                "enum": [
+                  "ROLE_ACCOUNTANT",
+                  "ROLE_ADMINISTRATOR",
+                  "ROLE_HEAD_ACCOUNTANT",
+                  "ROLE_MANAGER"
+                ]
+              },
+              "availableUntil": {
+                "description": "Дата, до якої дійсний Premium тариф для даної організації",
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "hasProVersion": {
+                "description": "Ознака, чи використовує Premium тариф дана організація",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "OrganizationShortModel": {
+        "required": [
+          "id",
+          "name",
+          "edrpou"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор організації",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва організації",
+            "type": "string"
+          },
+          "edrpou": {
+            "description": "ЄДРПОУ організації",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OrganizationSingleModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OrganizationListModel"
+          },
+          {
+            "required": [
+              "signatureType",
+              "signatureMethods",
+              "showQrCodeInProtocol",
+              "publicLinkAccessPeriod",
+              "stampPosition"
+            ],
+            "properties": {
+              "callbackUrl": {
+                "description": "URL-адреса зворотного виклику<br> *присвоюватиметься документу організації, після його створення, за умови, що іншого не було передано при створенні документа*",
+                "type": "string",
+                "format": "uri",
+                "nullable": true
+              },
+              "signatureType": {
+                "description": "Тип підпису документа<br> *присвоюватиметься документу організації, після його створення, за умови, що іншого не було передано при створенні документа*",
+                "type": "string",
+                "default": "external",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "signatureMethods": {
+                "description": "Список дозволених методів для підпису ваших документів<br> Лише вказані в даному налаштуванні методи будуть відображені в модальному вікні при підписі документа.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "iit",
+                    "diia",
+                    "mono",
+                    "smart_id"
+                  ]
+                },
+                "default": [
+                  "iit",
+                  "diia",
+                  "mono",
+                  "smart_id"
+                ]
+              },
+              "showQrCodeInProtocol": {
+                "description": "Ознака, чи друкувати QR-код в протоколі",
+                "type": "boolean",
+                "default": false
+              },
+              "publicLinkAccessPeriod": {
+                "description": "Термін доступу за-замовчуванням для публічних посилань (у днях)<br> *встановлюється при генерації публічного посилання до документа*",
+                "type": "integer",
+                "maximum": 365,
+                "minimum": 1
+              },
+              "stampPosition": {
+                "description": "Розташування печатки-підпису на документі",
+                "type": "string",
+                "default": "top_right",
+                "enum": [
+                  "top_left",
+                  "top_right",
+                  "bottom_left",
+                  "bottom_right"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "SignatureModel": {
+        "required": [
+          "id",
+          "code",
+          "name",
+          "userName",
+          "position",
+          "signedAt",
+          "stamp",
+          "organization"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор підпису",
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "description": "Код підписувача (ЄДРПОУ або ДРФО)",
+            "type": "string"
+          },
+          "name": {
+            "description": "Назва ТОВ чи ФОП",
+            "type": "string"
+          },
+          "userName": {
+            "description": "ПІБ підписувача",
+            "type": "string"
+          },
+          "position": {
+            "description": "Посада (інформація з ключа ЄЦП)",
+            "type": "string",
+            "nullable": true
+          },
+          "signedAt": {
+            "description": "Дата та час підпису",
+            "type": "string",
+            "format": "date-time"
+          },
+          "stamp": {
+            "description": "Інформація про ключ, підпис чи печатка",
+            "type": "boolean"
+          },
+          "organization": {
+            "description": "Підпис від організації?<br> *враховується тільки коли ЄДРПОУ та ДФРО коди різні*",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "TemplateListModel": {
+        "required": [
+          "id",
+          "title",
+          "thumbnailUrl",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор шаблону",
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "description": "Назва шаблону",
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "description": "Посилання на preview шаблона",
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "createdAt": {
+            "description": "Дата створення шаблону",
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      },
+      "TemplateFieldModel": {
+        "required": [
+          "id",
+          "key",
+          "page",
+          "type",
+          "hint",
+          "width",
+          "height",
+          "textSize",
+          "positionX",
+          "positionY",
+          "options",
+          "required",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор поля шаблону",
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "description": "Користувацький ідентифікатор поля шаблону<br> *Задається користувачем в момент створення нового поля шаблону*",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "page": {
+            "description": "Номер сторінки, на якому знаходить дане поле",
+            "type": "integer",
+            "minimum": 1
+          },
+          "type": {
+            "description": "Тип поля",
+            "type": "string",
+            "enum": [
+              "text",
+              "date",
+              "switch",
+              "select",
+              "formula",
+              "numeric",
+              "checkbox",
+              "signature",
+              "autocomplete"
+            ]
+          },
+          "hint": {
+            "description": "Підказка до поля<br> *виводиться на сторінці шаблону біля поля*",
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "width": {
+            "description": "Ширина поля",
+            "type": "integer",
+            "minimum": 0
+          },
+          "height": {
+            "description": "Висота поля",
+            "type": "integer",
+            "minimum": 0
+          },
+          "textSize": {
+            "description": "Розмір текст в даному полі",
+            "type": "number",
+            "format": "float"
+          },
+          "positionX": {
+            "description": "Позиція поля по вісі X",
+            "type": "number",
+            "format": "float",
+            "minimum": 0
+          },
+          "positionY": {
+            "description": "Позиція поля по вісі Y",
+            "type": "number",
+            "format": "float",
+            "minimum": 0
+          },
+          "required": {
+            "description": "Чи є поле обовязковим до заповнення?",
+            "type": "boolean",
+            "default": true
+          },
+          "options": {
+            "description": "Додаткові опції поля<br> *використовується з типами поля select, formula та autocomplete*",
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "description": "Дата додавання поля до шаблону",
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      },
+      "TemplateSingleModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TemplateListModel"
+          },
+          {
+            "required": [
+              "canUpdate",
+              "fileContent",
+              "callbackUrl",
+              "dynamicDocumentName",
+              "fields"
+            ],
+            "properties": {
+              "canUpdate": {
+                "description": "Ознака, чи може поточний користувач редагувати даний шаблон",
+                "type": "boolean"
+              },
+              "fileContent": {
+                "description": "Контент файлу шаблона *закодований в base64*",
+                "type": "string",
+                "format": "byte"
+              },
+              "callbackUrl": {
+                "description": "URL-адреса зворотного виклику<br> *Дана властивість буде успадкована документом, що створиться на основі даного шаблону, проте, якщо його не передавати, воно буде успадковане з налаштувань організації*",
+                "type": "string",
+                "format": "uri",
+                "maxLength": 255,
+                "nullable": true
+              },
+              "dynamicDocumentName": {
+                "description": "Якщо встановити значення true, то після заповнення полів шаблону та його підпису,\nотриманий документ буде містити назву в форматі: \"{template_title} {signer_name}\".<br>\nПри значенні false - назва документу буде такою ж, як і назва шаблону.\n",
+                "type": "boolean",
+                "default": false
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TemplateFieldModel"
+                }
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "TagSingleModel": {
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор тегу",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва тегу",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "color": {
+            "description": "Колір тегу *hex-format*",
+            "type": "string",
+            "format": "hex"
+          }
+        },
+        "type": "object"
+      },
+      "TagListModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TagSingleModel"
+          },
+          {
+            "properties": {
+              "showInDocuments": {
+                "description": "Дозволяє керувати відображенням документів з даною міткою в загальному списку документів",
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "TariffShortModel": {
+        "required": [
+          "id",
+          "name",
+          "documentPrice",
+          "subscriptionPrice"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор тарифу",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва тарифу",
+            "type": "string"
+          },
+          "documentPrice": {
+            "description": "Ціна за 1 додатково докуплений документ<br> *Увага, повертається ціле число, тобто 100 = 1 грн. 00 коп.*",
+            "type": "integer",
+            "minimum": 0
+          },
+          "subscriptionPrice": {
+            "description": "Ціна даного тарифу при купівлі на 1 місяць<br> *Увага, повертається ціле число, тобто 100 = 1 грн. 00 коп.*",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "type": "object"
+      },
+      "InvoiceShortModel": {
+        "required": [
+          "id",
+          "number",
+          "totalSum"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор рахунку",
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "description": "Номер рахунку в системі Dubidoc",
+            "type": "integer"
+          },
+          "totalSum": {
+            "description": "Загальна сума рахунку<br> *Увага, повертається ціле число, тобто 100 = 1 грн. 00 коп.*",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PeriodSingleModel": {
+        "required": [
+          "id",
+          "type",
+          "tariff",
+          "endDate",
+          "startDate",
+          "usedDocuments",
+          "availableDocuments"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор періоду",
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "description": "Тип періоду (тарифний, бонусний або додатково докуплені документи)",
+            "type": "string",
+            "enum": [
+              "bonus",
+              "tariff",
+              "document"
+            ]
+          },
+          "tariff": {
+            "$ref": "#/components/schemas/TariffShortModel"
+          },
+          "endDate": {
+            "description": "Дата закінчення періоду<br> *Приклад, 2025-12-12 означає що даний тариф дійсний **до** цієї дати*",
+            "type": "string",
+            "format": "date"
+          },
+          "startDate": {
+            "description": "Дата початку дії періоду",
+            "type": "string",
+            "format": "date"
+          },
+          "usedDocuments": {
+            "description": "Кількість використаних документів в цьому періоді",
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableDocuments": {
+            "description": "Загальна кількість документів, яка була доступна в цьому періоді",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "type": "object"
+      },
+      "CommentSingleModel": {
+        "required": [
+          "id",
+          "message",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор коментаря",
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserShortModel"
+              }
+            ],
+            "nullable": true,
+            "description": "Дані про власника коментаря"
+          },
+          "message": {
+            "description": "Текст коментаря",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "Дата створення коментаря",
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      },
+      "ContactSingleModel": {
+        "required": [
+          "id",
+          "name",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор контакту",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва контакту",
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "email": {
+            "description": "Email контакту",
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "edrpou": {
+            "description": "ЄДРПОУ контакту",
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 8,
+            "nullable": true
+          },
+          "createdAt": {
+            "description": "Дата створення контакту",
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      },
+      "FolderSingleModel": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "description": "Ідентифікатор папки",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "Назва папки",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        },
+        "type": "object"
+      },
+      "FolderListModel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FolderSingleModel"
+          },
+          {
+            "required": [
+              "children"
+            ],
+            "properties": {
+              "children": {
+                "description": "Рекурсивний список дочірніх папок",
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FolderSingleModel"
+                }
+              }
+            },
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Entity not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BaseErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Access denied",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BaseErrorResponse"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BaseErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "EmptyResponse": {
+        "description": "No content",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/EmptyRequest"
+            }
+          }
+        }
+      },
+      "ToManyRequests": {
+        "description": "Rate limit exceeded *(5 requests per 1 second)*",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "description": "Request limit per second",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "description": "The number of requests left for the time window",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Retry-After": {
+            "description": "Seconds at which the current rate limit window resets",
+            "schema": {
+              "type": "string",
+              "format": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BaseErrorResponse"
+            }
+          }
+        }
+      },
+      "PaymentRequired": {
+        "description": "Payment required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BaseErrorResponse"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationErrorResponse"
+            }
+          }
+        }
+      },
+      "SuccessResponse": {
+        "description": "Success",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SuccessResponse"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "id": {
+        "name": "id",
+        "in": "path",
+        "description": "Ідентифікатор сутності",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "page": {
+        "name": "offset",
+        "in": "query",
+        "description": "Пагінація - номер сторінки",
+        "schema": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        }
+      },
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Пагінація - кількість записів на сторінку",
+        "schema": {
+          "type": "integer",
+          "default": 30,
+          "maximum": 100,
+          "minimum": 1
+        }
+      },
+      "documentId": {
+        "name": "documentId",
+        "in": "path",
+        "description": "Ідентифікатор документа",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "attributeId": {
+        "name": "attributeId",
+        "in": "path",
+        "description": "Ідентифікатор атрибута",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "organization": {
+        "name": "X-Organization",
+        "in": "header",
+        "description": "Виконати дію в рамках організації",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "folderScope": {
+        "name": "scope",
+        "in": "query",
+        "description": "Область видимості",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "archive",
+            "documents"
+          ]
+        }
+      }
+    },
+    "requestBodies": {
+      "EmptyBody": {
+        "description": "Метод не приймає жодних параметрів, проте, потрібно передавати порожній JSON об'єкт",
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/EmptyRequest"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "X-Access-Token": {
+        "type": "apiKey",
+        "name": "X-Access-Token",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "X-Access-Token": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Document",
+      "description": "Document"
+    },
+    {
+      "name": "DocumentType",
+      "description": "DocumentType"
+    },
+    {
+      "name": "Signature",
+      "description": "Signature"
+    },
+    {
+      "name": "Download",
+      "description": "Download"
+    },
+    {
+      "name": "Participant",
+      "description": "Participant"
+    },
+    {
+      "name": "Archive",
+      "description": "Archive"
+    },
+    {
+      "name": "Organization",
+      "description": "Organization"
+    },
+    {
+      "name": "Template",
+      "description": "Template"
+    },
+    {
+      "name": "Billing",
+      "description": "Billing"
+    },
+    {
+      "name": "Invoice",
+      "description": "Invoice"
+    },
+    {
+      "name": "DocumentLink",
+      "description": "DocumentLink"
+    },
+    {
+      "name": "DocumentAttribute",
+      "description": "DocumentAttribute"
+    },
+    {
+      "name": "Comment",
+      "description": "Comment"
+    },
+    {
+      "name": "Contact",
+      "description": "Contact"
+    },
+    {
+      "name": "Folder",
+      "description": "Folder"
+    },
+    {
+      "name": "Tag",
+      "description": "Tag"
+    }
+  ]
+}

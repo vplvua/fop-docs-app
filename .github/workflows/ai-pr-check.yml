@@ -1,0 +1,87 @@
+name: AI PR check
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Format check (prettier)
+        run: npm run format:check
+
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Unit tests (vitest)
+        run: npm run test:run
+
+  real-behavior-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            // PR body is read as a JS string from context.payload — never
+            // interpolated into a shell command, so no injection risk here.
+            const body = context.payload.pull_request?.body || '';
+            const sectionRegex = /##\s+Real behavior proof([\s\S]+?)(?=\n##\s|$)/i;
+            const match = body.match(sectionRegex);
+            if (!match) {
+              core.setFailed('PR body must include a "## Real behavior proof" section.');
+              return;
+            }
+            const section = match[1];
+            // Accepted artifacts (per ADR D-037 + decision 2026-05-22):
+            //   (a) screenshot   — markdown image, attachment URL, or .png/.gif/.webp link
+            //   (b) verification log — fenced code block with >= 3 non-empty lines
+            //   (c) Playwright trace / video — .mp4/.webm link (Phase 1+, but allowed)
+            const hasImageOrLink = /!\[[^\]]*\]\([^)]*\)|https?:\/\/\S+|\.(png|gif|webp|mp4|webm)\b/i.test(section);
+            const codeBlocks = section.match(/```[\s\S]*?```/g) || [];
+            const hasVerificationLog = codeBlocks.some((block) => {
+              const lines = block
+                .replace(/^```\w*\n?|```$/g, '')
+                .split('\n')
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0);
+              return lines.length >= 3;
+            });
+            if (!hasImageOrLink && !hasVerificationLog) {
+              core.setFailed(
+                '"## Real behavior proof" must include either a screenshot / link / recording, ' +
+                'or a verification log code block (>= 3 non-empty lines).'
+              );
+              return;
+            }
+            // Sanity: section must contain something beyond the artifact itself.
+            const stripped = section
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/```[\s\S]*?```/g, '')
+              .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+              .replace(/https?:\/\/\S+/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (stripped.length < 20) {
+              core.setFailed('"## Real behavior proof" needs a short description (reproduction steps or context) alongside the artifact.');
+              return;
+            }
+            core.info('Real behavior proof present.');
