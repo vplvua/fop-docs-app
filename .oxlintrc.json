@@ -54,6 +54,39 @@
         "no-console": "off",
         "no-await-in-loop": "off"
       }
+    },
+    {
+      "files": ["lib/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["next", "next/*"],
+                "message": "lib/ must stay pure — no Next.js imports (AGENTS.md import boundaries)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["app/**/*.{ts,tsx}"],
+      "excludeFiles": ["app/api/internals/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/api/internals/*", "**/app/api/internals/*"],
+                "message": "app/ outside app/api/internals/ must not import from internals/ (AGENTS.md import boundaries)."
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

@@ -1,23 +1,21 @@
 # Current State
 
-**Останнє оновлення:** 2026-05-22
+**Останнє оновлення:** 2026-05-24
 **Призначення:** snapshot фактичної готовності системи. Оновлюється у Definition-of-Done кожного capability slice ([`mvp-capability-plan.md § 6`](mvp-capability-plan.md)).
 
 ---
 
 ## Phase
 
-`Phase 0 — MVP (not started)`
+`Phase 0 — MVP (in progress: S0 done)`
 
 ## Last completed slice
 
-`—` (нічого не змерджено)
+`S0. Phase 0 setup` (bootstrap — не capability, тому без OpenSpec change)
 
 ## Next slice
 
-`Phase 0 setup` (bootstrap, не capability — див. [`mvp-capability-plan.md § 4`](mvp-capability-plan.md))
-
-Після Phase 0 setup — `S1. auth` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)).
+`S1. auth` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `Skill(openspec-propose)` для `add-auth`.
 
 ## Blockers
 
@@ -32,7 +30,7 @@
 
 | ID  | Slice                | Status      | PR  | Demo recording |
 | --- | -------------------- | ----------- | --- | -------------- |
-| S0  | Phase 0 setup        | not started | —   | —              |
+| S0  | Phase 0 setup        | done        | —   | n/a (no UI)    |
 | S1  | auth                 | not started | —   | —              |
 | S2  | clients              | not started | —   | —              |
 | S3  | contracts            | not started | —   | —              |
@@ -51,6 +49,7 @@
 
 ## Recent activity
 
+- `2026-05-24` — **S0 (Phase 0 setup) complete.** Drizzle + Neon HTTP driver + `lib/db/` (singleton `db`, `schema/observability.integration_health`, перша SQL міграція `0000_init_integration_health.sql`). `lib/logging/` (pino з redact по всіх secrets з NFR-SEC-02). `lib/observability/` (`recordIntegrationSuccess` / `recordIntegrationError` / `getIntegrationHealth`). `lib/{auth,blob,pdf,external-apis,i18n}/` — README-only shape, готові до slot-in. `proxy.ts` (Next 16, pass-through stub з matcher, що виключає static + `/api/health`). `vercel.ts` (через `@vercel/config/v1`, `crons: []`). `app/api/health/route.ts` → `{ status: 'ok' }`. `app/page.tsx` + `app/layout.tsx` — мінімальний UA placeholder (Geist sans, метаданi). Import-boundary правила в `.oxlintrc.json` (`lib/` ↛ `next/*`; `app/` ↛ `app/api/internals/`). `db:generate` / `db:migrate` / `db:studio` scripts. `npm run qa` — 6/6 gates pass (lint / format / typecheck / test / build / openspec validate).
 - `2026-05-22` — Severity 1+2 закриття перед S0: pin Node 22 (`.nvmrc` + `engines`), `.env.example` зі всіма ENV з NFR-SEC-02, hardening хуків (jq hard-dep check), `.editorconfig`, `.oxlintrc.json` (correctness+suspicious+perf як error, pedantic як warn, плагіни react/jsx-a11y/nextjs/import/promise), strict TS прапори (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), jsdom→happy-dom + `@vitest/coverage-v8` з 70% threshold на lib/+components/, RBP regex приймає screenshot OR verification log, `AGENTS.md` оновлено: first-time setup для людини (`vercel link` / `env pull`) + Quality gates + Тести.
 - `2026-05-22` — Прийнято [D-038](adr/D-038-drizzle-orm.md) (Drizzle ORM, відкладена інсталяція до S0) і [D-039](adr/D-039-test-http-mocks.md) (MSW як єдина стратегія HTTP-моків, відкладена інсталяція до S6). `tests/mocks/README.md` фіксує convention.
 - `2026-05-22` — Quality gates stack: oxlint (eslint видалено), Prettier, Vitest, `scripts/qa-verify.mjs`, Claude Code hooks (PostToolUse/Stop/PreToolUse), `.github/workflows/ai-pr-check.yml` (static-gates + real-behavior-proof), PR template, `docs/qa/traceability-matrix.md`. Зафіксовано в [D-037](adr/D-037-quality-gates-stack.md) (переглядає [D-035](adr/D-035-cicd.md) в частині tooling).
