@@ -22,6 +22,13 @@ npx vercel env pull .env.local --yes     # підтягнути POSTGRES_URL, BL
 ADMIN_EMAIL, ADMIN_PASSWORD_HASH, SESSION_SECRET) — додаються через `vercel env add` для
 development/preview/production окремо. Шаблон у [`.env.example`](.env.example).
 
+Згенерувати auth-секрети локально перед `vercel env add`:
+
+```bash
+printf 'your-password' | node scripts/hash-password.mjs   # ADMIN_PASSWORD_HASH (argon2id)
+openssl rand -base64 48                                   # SESSION_SECRET (≥ 32 байти ентропії)
+```
+
 Агент не може виконати ці кроки самостійно (інтерактивні prompts).
 
 ## Requirements

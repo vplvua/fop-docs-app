@@ -8,6 +8,13 @@
       "when": 1779627729303,
       "tag": "0000_init_integration_health",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779634481858,
+      "tag": "0001_add_auth",
+      "breakpoints": true
     }
   ]
 }
