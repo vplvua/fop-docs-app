@@ -15,6 +15,13 @@
       "when": 1779634481858,
       "tag": "0001_add_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779707048579,
+      "tag": "0002_add_clients",
+      "breakpoints": true
     }
   ]
 }

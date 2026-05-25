@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { signOut } from "../(auth)/actions";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -6,9 +8,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <span className="text-sm font-semibold tracking-tight text-foreground">
-            ФОП Документи
-          </span>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="text-sm font-semibold tracking-tight text-foreground">
+              ФОП Документи
+            </Link>
+            <nav className="flex items-center gap-4">
+              <Link
+                href="/clients"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Клієнти
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground" title={adminEmail}>
               {adminEmail}
