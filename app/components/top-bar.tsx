@@ -5,6 +5,7 @@ import { signOut } from "../(auth)/actions";
 const NAV_LINKS = [
   { href: "/clients", label: "Клієнти" },
   { href: "/payments", label: "Платежі" },
+  { href: "/acts", label: "Акти" },
   { href: "/settings/tariffs", label: "Налаштування" },
 ] as const;
 

@@ -1,11 +1,12 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
+import { triggerPdfGeneration } from "@/lib/acts/generate-pdf";
+import { nextActNumber } from "@/lib/acts/numbering";
 import { dbPool, schema } from "@/lib/db";
 import { logger } from "@/lib/logging";
 import { getContractPatterns, getSmsKeywords, getTransitEdrpouList } from "@/lib/settings";
 
 import { classify } from "./classify";
-import { lastDayOfMonth } from "./act-stub";
 import type { ClassificationResult } from "./types";
 
 type Tx = Parameters<Parameters<typeof dbPool.transaction>[0]>[0];
@@ -37,19 +38,11 @@ async function fetchClassificationData(tx: Tx, paymentId: string) {
   return { payment, clientsWithContracts, allTariffs, allSmsPrices };
 }
 
-async function countExistingActs(tx: Tx, clientId: string, actDate: string): Promise<number> {
-  const [row] = await tx
-    .select({ count: sql<number>`count(*)::int` })
-    .from(schema.acts)
-    .where(and(eq(schema.acts.clientId, clientId), eq(schema.acts.actDate, actDate)));
-  return row?.count ?? 0;
-}
-
 async function writeClassifiedResult(
   tx: Tx,
   paymentId: string,
   result: Extract<ClassificationResult, { status: "classified" }>,
-) {
+): Promise<string> {
   const [newAct] = await tx
     .insert(schema.acts)
     .values(result.actStub)
@@ -75,6 +68,8 @@ async function writeClassifiedResult(
     { event: "classification.success", paymentId, clientId: result.clientId, actId: newAct!.id },
     "payment classified",
   );
+
+  return newAct!.id;
 }
 
 async function writeQueueResult(
@@ -107,15 +102,11 @@ export async function runClassification(paymentId: string): Promise<Classificati
     getTransitEdrpouList(),
   ]);
 
-  return dbPool.transaction(async (tx) => {
+  const result = await dbPool.transaction(async (tx) => {
     const { payment, clientsWithContracts, allTariffs, allSmsPrices } =
       await fetchClassificationData(tx, paymentId);
 
-    const actDate = lastDayOfMonth(payment.paymentDate);
-    const matched = clientsWithContracts.find((c) => c.legalId === payment.payerLegalId);
-    const existingActCount = matched ? await countExistingActs(tx, matched.id, actDate) : 0;
-
-    const result = classify({
+    const classResult = classify({
       payment,
       clients: clientsWithContracts,
       patterns,
@@ -123,15 +114,27 @@ export async function runClassification(paymentId: string): Promise<Classificati
       transitEdrpouList,
       tariffs: allTariffs,
       smsPrices: allSmsPrices,
-      existingActCount,
+      existingActCount: 0,
     });
 
-    if (result.status === "classified") {
-      await writeClassifiedResult(tx, paymentId, result);
-    } else {
-      await writeQueueResult(tx, paymentId, result);
+    if (classResult.status === "classified") {
+      const actNumber = await nextActNumber(
+        tx,
+        classResult.actStub.clientId,
+        classResult.actStub.actDate,
+      );
+      classResult.actStub.number = actNumber;
+      const actId = await writeClassifiedResult(tx, paymentId, classResult);
+      return { classResult, actId };
     }
 
-    return result;
+    await writeQueueResult(tx, paymentId, classResult);
+    return { classResult, actId: null };
   });
+
+  if (result.actId) {
+    triggerPdfGeneration(result.actId).catch(() => {});
+  }
+
+  return result.classResult;
 }
