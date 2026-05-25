@@ -57,6 +57,13 @@
       "when": 1779713600000,
       "tag": "0007_seed_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779735835727,
+      "tag": "0008_add_payments",
+      "breakpoints": true
     }
   ]
 }
