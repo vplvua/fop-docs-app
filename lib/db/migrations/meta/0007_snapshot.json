@@ -1,6 +1,6 @@
 {
-  "id": "95c64037-3922-4fdd-a661-e3a406d4e043",
-  "prevId": "9a54a812-61a1-480c-b1ff-c6e08f33214d",
+  "id": "4f3852f2-fb71-4c82-bbf5-7b25c356147e",
+  "prevId": "c14e58ae-7c37-43c5-ad15-fa65cb36e3ab",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -395,6 +395,38 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.settings": {
+      "name": "settings",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
         },
         "updated_at": {
           "name": "updated_at",

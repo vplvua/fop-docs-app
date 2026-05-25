@@ -7,15 +7,15 @@
 
 ## Phase
 
-`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 done)`
+`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 done)`
 
 ## Last completed slice
 
-`S4. tariffs` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-25-add-tariffs/`; spec живе у `openspec/specs/tariffs/spec.md`.
+`S5. settings` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-25-add-settings/`; spec живе у `openspec/specs/settings/spec.md`.
 
 ## Next slice
 
-`S5. settings` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-settings`.
+`S6. payments-ingest` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-payments-ingest`.
 
 ## Blockers
 
@@ -35,7 +35,7 @@
 | S2  | clients              | done        | —   | skipped                            |
 | S3  | contracts            | done        | —   | skipped                            |
 | S4  | tariffs              | done        | —   | skipped                            |
-| S5  | settings             | not started | —   | —                                  |
+| S5  | settings             | done        | —   | skipped                            |
 | S6  | payments-ingest      | not started | —   | —                                  |
 | S7  | classification       | not started | —   | —                                  |
 | S8  | acts                 | not started | —   | —                                  |
@@ -49,6 +49,7 @@
 
 ## Recent activity
 
+- `2026-05-25` — **S5 (settings) complete.** `lib/db/schema/settings.ts` (KV-таблиця `settings` з `key TEXT PK`, `value JSONB`); міграції `0006_add_settings.sql` + `0007_seed_settings.sql` (5 regex-патернів, sms_keywords, transit_edrpou_list, 3 інтервали). `lib/settings/index.ts` — typed getters (`getContractPatterns`, `getSmsKeywords`, `getTransitEdrpouList`, `getPollingIntervals`) + `setSettingValue` upsert. UI: `/settings/patterns` (CRUD + live test-area з match highlight + captured groups), `/settings/sms-keywords` (chip-editor), `/settings/transit-edrpou` (chip-editor з 8-digit validation), `/settings/integrations` (3 placeholder status cards + editable intervals form). Sidebar nav розширено до 6 entries. 113/113 unit-тестів (13 нових: 5 accessors + 8 validation). `npm run qa` — 6/6 green. PRD coverage: FR-SET-03..07. Spec archived до `openspec/specs/settings/spec.md`.
 - `2026-05-25` — **S4 (tariffs) complete.** `lib/db/schema/tariffs.ts` (таблиці `tariffs` з UNIQUE (apartments_min, apartments_max, effective_from) і `sms_prices` з UNIQUE effective_from); міграції `0004_add_tariffs.sql` + `0005_seed_tariffs.sql` (catch-all 200 грн, SMS 1.40 грн). `lib/tariffs/resolve.ts` — `resolveAccessPrice` (override → ranged narrowest → catch-all, versioned by effective_from) + `resolveSmsPrice`. `lib/validation/tariffs.ts` — Zod-схеми `createTariffSchema` / `createSmsPriceSchema`. Server actions: `createTariff` / `deleteTariff` (з catch-all invariant) у `app/(settings)/settings/tariffs/`, `createSmsPrice` / `deleteSmsPrice` у `app/(settings)/settings/sms-prices/`. UI: `/settings/tariffs` (таблиця + create form), `/settings/sms-prices` (таблиця + create form), settings layout з sidebar nav. Shared `TopBar` component з "Налаштування" link. 100/100 unit-тестів (27 нових: 15 resolver + 12 validation). `npm run qa` — 6/6 green. PRD coverage: FR-TAR-01..10, FR-SET-01..02. Spec archived до `openspec/specs/tariffs/spec.md`.
 - `2026-05-25` — **S3 (contracts) complete.** `lib/db/schema/contracts.ts` (таблиця `contracts` з 9 полями, UNIQUE на `client_id`, FK RESTRICT до `clients`); міграція `0003_add_contracts.sql` applied. `lib/validation/contracts.ts` — Zod-схеми `createContractSchema` / `updateContractSchema` з `signedDate` (date), `number` (non-empty), `fileUrl` (URL). Server actions: `createContract` / `updateContract` / `deleteContract` у `app/(dashboard)/clients/[id]/contract-actions.ts` з cardinality check і FK violation handling. UI: contract form embedded у "Договір" tab клієнтської картки (`contract-form.tsx`) — create mode з pre-fill `number` від `moeosbb_user_id`, edit mode з FR-CTR-04 warning, delete з confirmation. `ContractWarning` тепер conditional — показується тільки коли клієнт не має договору. `ClientField` розширено типом `date`. 73/73 unit-тестів (16 нових для contract validation). `npm run qa` — 6/6 green. PRD coverage: FR-CTR-01..06, FR-CLI-11 (conditional). Spec archived до `openspec/specs/contracts/spec.md`, `clients` spec оновлено.
 - `2026-05-25` — **S2 (clients) complete.** `lib/db/schema/clients.ts` (таблиця `clients` з 15 полями, `pgEnum('edo_provider')`, 2 індекси); міграція `0002_add_clients.sql` applied. `lib/validation/clients.ts` — Zod-схеми `createClientSchema` / `updateClientSchema` з `legal_id` (8/10 digits), email, `apartments_count ≥ 1`, `access_price_override` decimal format. Server actions: `createClient` / `updateClient` / `archiveClientAction` / `activateClientAction` у `app/(dashboard)/clients/actions.ts`. UI: `/clients` (список з пошуком + фільтри Active/Archive, Local/MoeOSBB, edo_provider через URL params), `/clients/new` (create form з prefill query params, FR-CLI-02), `/clients/[id]` (card з tabs: info form, 3 stubs для S3/S6/S8, contract warning FR-CLI-11). Navigation link "Клієнти" у top-bar. 57/57 unit-тестів (19 нових для validation schemas). `npm run qa` — 6/6 green. PRD coverage: FR-CLI-01..11, BC-DATA-03, BC-USER-03. Spec archived до `openspec/specs/clients/spec.md`.

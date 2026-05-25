@@ -5,6 +5,10 @@ import { TopBar } from "../../components/top-bar";
 const SETTINGS_NAV = [
   { href: "/settings/tariffs", label: "Тарифи" },
   { href: "/settings/sms-prices", label: "Ціни СМС" },
+  { href: "/settings/patterns", label: "Патерни" },
+  { href: "/settings/sms-keywords", label: "Ключові слова СМС" },
+  { href: "/settings/transit-edrpou", label: "Транзитні ЄДРПОУ" },
+  { href: "/settings/integrations", label: "Інтеграції" },
 ] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
