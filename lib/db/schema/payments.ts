@@ -11,6 +11,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { acts } from "./acts";
+
 export const paymentStatusEnum = pgEnum("payment_status", [
   "received",
   "classified",
@@ -39,7 +41,7 @@ export const payments = pgTable(
     unitPrice: numeric("unit_price", { precision: 10, scale: 2 }),
     quantity: numeric("quantity", { precision: 10, scale: 2 }),
     quantityUnit: text("quantity_unit"),
-    actId: uuid("act_id"),
+    actId: uuid("act_id").references(() => acts.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .default(sql`now()`),

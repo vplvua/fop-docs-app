@@ -1,5 +1,6 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { neon, Pool } from "@neondatabase/serverless";
+import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
+import { drizzle as drizzleWs } from "drizzle-orm/neon-serverless";
 
 import * as schema from "./schema";
 
@@ -12,11 +13,11 @@ if (!process.env.POSTGRES_URL) {
 
 const sql = neon(process.env.POSTGRES_URL);
 
-// HTTP-fetch driver fits Vercel Fluid Compute well (no stateful connection pool).
-// `db.transaction()` is not supported on neon-http — when S6/S8 introduce
-// `SELECT FOR UPDATE` workflows, add a sibling `dbPool` export using
-// `drizzle-orm/neon-serverless` + `Pool` (websocket) for transactional ops.
-export const db = drizzle({ client: sql, schema, casing: "snake_case" });
+export const db = drizzleHttp({ client: sql, schema, casing: "snake_case" });
+
+const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+export const dbPool = drizzleWs({ client: pool, schema, casing: "snake_case" });
 
 export type Db = typeof db;
+export type DbPool = typeof dbPool;
 export { schema };

@@ -7,15 +7,15 @@
 
 ## Phase
 
-`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 done)`
+`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 done)`
 
 ## Last completed slice
 
-`S6. payments-ingest` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-25-add-payments-ingest/`; spec живе у `openspec/specs/payments-ingest/spec.md`.
+`S7. classification` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-25-add-classification/`; spec живе у `openspec/specs/classification/spec.md`.
 
 ## Next slice
 
-`S7. classification` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-classification`.
+`S8. acts` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-acts`.
 
 ## Blockers
 
@@ -37,7 +37,7 @@
 | S4  | tariffs              | done        | —   | skipped                            |
 | S5  | settings             | done        | —   | skipped                            |
 | S6  | payments-ingest      | done        | —   | skipped                            |
-| S7  | classification       | not started | —   | —                                  |
+| S7  | classification       | done        | —   | skipped                            |
 | S8  | acts                 | not started | —   | —                                  |
 | S9  | edo-dubidoc          | not started | —   | —                                  |
 | S10 | edo-vchasno-external | not started | —   | —                                  |
@@ -49,6 +49,7 @@
 
 ## Recent activity
 
+- `2026-05-25` — **S7 (classification) complete.** `lib/classification/` — pure 8-step classification pipeline (parse-contract-numbers, match-client, detect-service-type, check-completeness, resolve-quantity, classify, act-stub) + DB orchestrator `run-classification.ts` з `SELECT ... FOR UPDATE` у websocket transaction (`dbPool`). `lib/db/schema/acts.ts` (таблиця `acts` з 20 полями, pgEnum `act_status`, UNIQUE `(client_id, act_date, number)`, FK RESTRICT до clients, FK до payments); міграція `0009_add_acts.sql` applied. FK `payments.act_id → acts.id ON DELETE SET NULL`. Classification auto-trigger після PrivatBank polling (`app/api/cron/privatbank-poll/route.ts` → `classifyInserted`). Server actions `classifyPaymentAction` / `skipPaymentAction`. UI: `ClassificationPanel` на `/payments/[id]` з кнопками "Класифікувати"/"Пропустити", reason-specific guidance для 8 reasons, act link для classified, badge для skipped. `scripts/seed-classification-test.mjs` — 6 тестових платежів для ручної перевірки. 176/176 unit-тестів (56 нових: 7 test files для classification). `npm run qa` — 6/6 green. PRD coverage: FR-CLASS-01..18, FR-EDGE-03. Spec archived до `openspec/specs/classification/spec.md`.
 - `2026-05-25` — **S6 (payments-ingest) complete.** `lib/db/schema/payments.ts` (таблиця `payments` з 20 полями, pgEnum `payment_status` (received/classified/awaiting_review/in_queue/skipped), UNIQUE `bank_transaction_id`, 3 індекси); міграція `0008_add_payments.sql` applied. `lib/external-apis/privatbank/` — HTTP client з recursive retry/backoff (1s/5s/30s), 401 AuthError, 429 Retry-After; mapper API → Payment (FR-PAY-05); `pollPrivatbank()` з overlapping window (2× interval), idempotent INSERT ON CONFLICT DO NOTHING, integration_health updates. Cron handler `app/api/cron/privatbank-poll/route.ts` з CRON_SECRET guard; registered в `vercel.ts` (`0 * * * *`). Server action `triggerPrivatbankPollNow`. UI: `/payments` (список з status/search фільтрами), `/payments/[id]` (картка з collapsible raw_data JSON). "Платежі" link у top-bar. MSW installed (D-039), handler у `tests/mocks/handlers/privatbank.ts`. 120/120 unit-тестів (7 нових: 3 mapper + 4 client via MSW). `npm run qa` — 6/6 green. PRD coverage: FR-PAY-01..08, NFR-PERF-01, TC-INTEG-01, TC-INTEG-10. Spec archived до `openspec/specs/payments-ingest/spec.md`.
 - `2026-05-25` — **S5 (settings) complete.** `lib/db/schema/settings.ts` (KV-таблиця `settings` з `key TEXT PK`, `value JSONB`); міграції `0006_add_settings.sql` + `0007_seed_settings.sql` (5 regex-патернів, sms_keywords, transit_edrpou_list, 3 інтервали). `lib/settings/index.ts` — typed getters (`getContractPatterns`, `getSmsKeywords`, `getTransitEdrpouList`, `getPollingIntervals`) + `setSettingValue` upsert. UI: `/settings/patterns` (CRUD + live test-area з match highlight + captured groups), `/settings/sms-keywords` (chip-editor), `/settings/transit-edrpou` (chip-editor з 8-digit validation), `/settings/integrations` (3 placeholder status cards + editable intervals form). Sidebar nav розширено до 6 entries. 113/113 unit-тестів (13 нових: 5 accessors + 8 validation). `npm run qa` — 6/6 green. PRD coverage: FR-SET-03..07. Spec archived до `openspec/specs/settings/spec.md`.
 - `2026-05-25` — **S4 (tariffs) complete.** `lib/db/schema/tariffs.ts` (таблиці `tariffs` з UNIQUE (apartments_min, apartments_max, effective_from) і `sms_prices` з UNIQUE effective_from); міграції `0004_add_tariffs.sql` + `0005_seed_tariffs.sql` (catch-all 200 грн, SMS 1.40 грн). `lib/tariffs/resolve.ts` — `resolveAccessPrice` (override → ranged narrowest → catch-all, versioned by effective_from) + `resolveSmsPrice`. `lib/validation/tariffs.ts` — Zod-схеми `createTariffSchema` / `createSmsPriceSchema`. Server actions: `createTariff` / `deleteTariff` (з catch-all invariant) у `app/(settings)/settings/tariffs/`, `createSmsPrice` / `deleteSmsPrice` у `app/(settings)/settings/sms-prices/`. UI: `/settings/tariffs` (таблиця + create form), `/settings/sms-prices` (таблиця + create form), settings layout з sidebar nav. Shared `TopBar` component з "Налаштування" link. 100/100 unit-тестів (27 нових: 15 resolver + 12 validation). `npm run qa` — 6/6 green. PRD coverage: FR-TAR-01..10, FR-SET-01..02. Spec archived до `openspec/specs/tariffs/spec.md`.

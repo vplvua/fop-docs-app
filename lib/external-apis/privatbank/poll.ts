@@ -11,12 +11,18 @@ function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export async function pollPrivatbank(): Promise<{ inserted: number; total: number }> {
+interface PollResult {
+  inserted: number;
+  total: number;
+  insertedIds: string[];
+}
+
+export async function pollPrivatbank(): Promise<PollResult> {
   const token = process.env.PRIVATBANK_TOKEN;
   if (!token) {
     logger.error({ event: "privatbank.no_token" }, "PRIVATBANK_TOKEN not set");
     await recordIntegrationError("privatbank", new Error("PRIVATBANK_TOKEN not set"));
-    return { inserted: 0, total: 0 };
+    return { inserted: 0, total: 0, insertedIds: [] };
   }
 
   const { privatbankMinutes } = await getPollingIntervals();
@@ -42,14 +48,18 @@ export async function pollPrivatbank(): Promise<{ inserted: number; total: numbe
           .returning({ id: payments.id }),
       ),
     );
-    const inserted = results.filter((r) => r.length > 0).length;
+    const insertedIds = results.filter((r) => r.length > 0).map((r) => r[0]!.id);
 
     await recordIntegrationSuccess("privatbank");
     logger.info(
-      { event: "privatbank.poll_complete", inserted, total: transactions.length },
+      {
+        event: "privatbank.poll_complete",
+        inserted: insertedIds.length,
+        total: transactions.length,
+      },
       "poll complete",
     );
-    return { inserted, total: transactions.length };
+    return { inserted: insertedIds.length, total: transactions.length, insertedIds };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     await recordIntegrationError("privatbank", err);

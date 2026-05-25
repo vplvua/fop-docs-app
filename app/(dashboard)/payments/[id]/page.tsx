@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema/payments";
 
+import { ClassificationPanel } from "./classification-panel";
+
 const STATUS_LABELS: Record<string, string> = {
   received: "Отримано",
   classified: "Класифіковано",
@@ -50,6 +52,13 @@ export default async function PaymentPage({ params }: Props) {
           ) : null}
         </dl>
       </div>
+      <ClassificationPanel
+        paymentId={payment.id}
+        status={payment.status}
+        classificationReason={payment.classificationReason}
+        actId={payment.actId}
+        clientId={payment.clientId}
+      />
       <details className="rounded-xl border border-border bg-card shadow-sm">
         <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">
           raw_data (JSON)
