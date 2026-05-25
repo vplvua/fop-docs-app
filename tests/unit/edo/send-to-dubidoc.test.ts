@@ -1,0 +1,124 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockDbResult = { rows: [] as unknown[] };
+
+vi.mock("@/lib/db", () => {
+  const chain = {
+    select: vi.fn(),
+    from: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn(),
+    update: vi.fn(),
+    set: vi.fn(),
+  };
+  for (const fn of Object.values(chain)) {
+    fn.mockImplementation(() => chain);
+  }
+  chain.limit.mockImplementation(() => mockDbResult.rows);
+  chain.where.mockImplementation(() => chain);
+  return { db: chain };
+});
+
+vi.mock("@/lib/external-apis/dubidoc", () => ({
+  createDocument: vi.fn(),
+  actToCreateDocumentPayload: vi.fn(),
+}));
+
+vi.mock("@/lib/observability", () => ({
+  recordIntegrationSuccess: vi.fn(),
+  recordIntegrationError: vi.fn(),
+}));
+
+import { createDocument, actToCreateDocumentPayload } from "@/lib/external-apis/dubidoc";
+import { recordIntegrationSuccess, recordIntegrationError } from "@/lib/observability";
+import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
+
+const mockCreateDocument = vi.mocked(createDocument);
+const mockMapper = vi.mocked(actToCreateDocumentPayload);
+const mockRecordSuccess = vi.mocked(recordIntegrationSuccess);
+const mockRecordError = vi.mocked(recordIntegrationError);
+
+function makeAct(overrides = {}) {
+  return {
+    id: "act-001",
+    clientId: "client-001",
+    paymentId: "payment-001",
+    status: "draft",
+    edoProvider: "dubidoc",
+    edoDocId: null,
+    pdfFileUrl: "https://blob.example.com/acts/act-001.pdf",
+    clientSnapshot: { email: "test@example.com", legalId: "12345678" },
+    ...overrides,
+  };
+}
+
+describe("sendActToDubidoc", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbResult.rows = [];
+    globalThis.fetch = vi.fn();
+  });
+
+  it("skips if act not found", async () => {
+    mockDbResult.rows = [];
+    const result = await sendActToDubidoc("nonexistent");
+    expect(result.skipped).toBe(true);
+    expect(result.sent).toBe(false);
+  });
+
+  it("skips if edo_provider is not dubidoc", async () => {
+    mockDbResult.rows = [makeAct({ edoProvider: "vchasno_external" })];
+    const result = await sendActToDubidoc("act-001");
+    expect(result.skipped).toBe(true);
+  });
+
+  it("skips if status is not draft", async () => {
+    mockDbResult.rows = [makeAct({ status: "sent_to_edo" })];
+    const result = await sendActToDubidoc("act-001");
+    expect(result.skipped).toBe(true);
+  });
+
+  it("skips if edo_doc_id already set (idempotency)", async () => {
+    mockDbResult.rows = [makeAct({ edoDocId: "already-sent" })];
+    const result = await sendActToDubidoc("act-001");
+    expect(result.skipped).toBe(true);
+    expect(mockCreateDocument).not.toHaveBeenCalled();
+  });
+
+  it("skips if no PDF url", async () => {
+    mockDbResult.rows = [makeAct({ pdfFileUrl: null })];
+    const result = await sendActToDubidoc("act-001");
+    expect(result.skipped).toBe(true);
+    expect(result.error).toBe("PDF not generated yet");
+  });
+
+  it("sends to DubiDoc on success path", async () => {
+    mockDbResult.rows = [makeAct()];
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      new Response(Buffer.from("fake-pdf"), { status: 200 }),
+    );
+    mockMapper.mockReturnValueOnce({ file: "base64" } as never);
+    mockCreateDocument.mockResolvedValueOnce({ id: "doc-999", status: "new" });
+
+    const result = await sendActToDubidoc("act-001");
+    expect(result.sent).toBe(true);
+    expect(result.skipped).toBe(false);
+    expect(mockCreateDocument).toHaveBeenCalled();
+    expect(mockRecordSuccess).toHaveBeenCalledWith("dubidoc");
+  });
+
+  it("returns error on DubiDoc failure", async () => {
+    mockDbResult.rows = [makeAct()];
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      new Response(Buffer.from("pdf"), { status: 200 }),
+    );
+    mockMapper.mockReturnValueOnce({ file: "base64" } as never);
+    mockCreateDocument.mockRejectedValueOnce(new Error("DubiDoc down"));
+
+    const result = await sendActToDubidoc("act-001");
+    expect(result.sent).toBe(false);
+    expect(result.skipped).toBe(false);
+    expect(result.error).toBe("DubiDoc down");
+    expect(mockRecordError).toHaveBeenCalledWith("dubidoc", expect.any(Error));
+  });
+});

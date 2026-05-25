@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { uploadActPdf } from "@/lib/blob";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
+import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { logger } from "@/lib/logging";
 import { renderActPdf } from "@/lib/pdf/render";
 
@@ -29,6 +30,11 @@ export async function POST(_request: Request, { params }: RouteParams) {
       .where(eq(acts.id, id));
 
     logger.info({ event: "act.pdf_generated", actId: id }, "PDF generated");
+
+    if (act.edoProvider === "dubidoc") {
+      sendActToDubidoc(id).catch(() => {});
+    }
+
     return NextResponse.json({ ok: true, pdfFileUrl: blobUrl });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

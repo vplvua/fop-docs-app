@@ -7,7 +7,10 @@ import type { VercelConfig } from "@vercel/config/v1";
  */
 export const config: VercelConfig = {
   framework: "nextjs",
-  crons: [{ path: "/api/cron/privatbank-poll", schedule: "0 * * * *" }],
+  crons: [
+    { path: "/api/cron/privatbank-poll", schedule: "0 * * * *" },
+    { path: "/api/cron/dubidoc-poll", schedule: "0 */6 * * *" },
+  ],
 };
 
 export default config;

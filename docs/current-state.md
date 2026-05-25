@@ -1,29 +1,26 @@
 # Current State
 
-**Останнє оновлення:** 2026-05-25
+**Останнє оновлення:** 2026-05-26
 **Призначення:** snapshot фактичної готовності системи. Оновлюється у Definition-of-Done кожного capability slice ([`mvp-capability-plan.md § 6`](mvp-capability-plan.md)).
 
 ---
 
 ## Phase
 
-`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 done)`
+`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8 + S9 done)`
 
 ## Last completed slice
 
-`S7. classification` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-25-add-classification/`; spec живе у `openspec/specs/classification/spec.md`.
+`S9. edo-dubidoc` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-26-add-edo-dubidoc/`; spec живе у `openspec/specs/edo-dubidoc/spec.md`.
 
 ## Next slice
 
-`S8. acts` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-acts`.
+`S10. edo-vchasno-external` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-edo-vchasno-external`.
 
 ## Blockers
 
 Жодних поточних блокерів. Відкриті TBD-питання, які прояснюються до відкриття відповідного зрізу — у [`mvp-capability-plan.md § 7`](mvp-capability-plan.md):
 
-- `TBD-S6-1` — sandbox для PrivatBank API (стане блокером перед S6).
-- `TBD-S8-1` — Chromium cold-start на Vercel Function (стане блокером перед S8).
-- `TBD-S9-1` — sandbox-токен Дубідок Premium (стане блокером перед S9).
 - `TBD-S11-1` — мережевий доступ з Vercel у приватний MySQL "Моє ОСББ" (стане блокером перед S11).
 
 ## Capability completion matrix
@@ -38,8 +35,8 @@
 | S5  | settings             | done        | —   | skipped                            |
 | S6  | payments-ingest      | done        | —   | skipped                            |
 | S7  | classification       | done        | —   | skipped                            |
-| S8  | acts                 | not started | —   | —                                  |
-| S9  | edo-dubidoc          | not started | —   | —                                  |
+| S8  | acts                 | done        | —   | skipped                            |
+| S9  | edo-dubidoc          | done        | —   | skipped                            |
 | S10 | edo-vchasno-external | not started | —   | —                                  |
 | S11 | moeosbb-sync         | not started | —   | —                                  |
 | S12 | queue (polish)       | not started | —   | —                                  |
@@ -49,6 +46,8 @@
 
 ## Recent activity
 
+- `2026-05-26` — **S9 (edo-dubidoc) complete.** `lib/external-apis/dubidoc/` — HTTP client з retry/backoff (1s/5s/30s), 401 AuthError, 429 Retry-After; `createDocument` (POST /api/v1/documents з base64 PDF, inline participants, Premium fields) + `getDocumentStatus` (GET polling); mapper `actToCreateDocumentPayload` assembles request from act snapshots. `lib/edo/send-to-dubidoc.ts` — orchestrator: validates preconditions (status=draft, edo_provider=dubidoc, edo_doc_id IS NULL, pdf_file_url set), downloads PDF from Blob, sends to DubiDoc, updates act (status=sent_to_edo, edo_doc_id, sent_to_edo_at), integration_health. Auto-send hooked into `app/api/acts/[id]/pdf/route.ts` after successful PDF generation. `lib/edo/poll-dubidoc.ts` — polls all sent_to_edo acts via Promise.allSettled, maps DubiDoc responses (signed→signed, archived→deleted+payment.act_id=NULL, refused→edo_status only, other→edo_status). Cron handler `app/api/cron/dubidoc-poll/route.ts` з CRON_SECRET guard; registered в `vercel.ts` (`0 */6 * * *`). Server actions: `retryDubidocSendAction`, `refreshDubidocStatusAction`, `triggerDubidocPollAction`. UI: act detail page — "Перейти в Дубідок" link, "Оновити статус" button, "Спробувати ще раз" button, status banners (Не відправлено / Клієнт відмовився / Підписано / raw edo_status). Dashboard — "Опитати статуси Дубідок" button. MSW mock handler `tests/mocks/handlers/dubidoc.ts`. 225/225 unit-тестів (34 нових: 5 test files для edo). `npm run qa` — 6/6 green. PRD coverage: FR-EDO-01..12, FR-EDGE-01, TC-INTEG-02, TC-INTEG-13, NFR-PERF-04..06. Spec archived до `openspec/specs/edo-dubidoc/spec.md`.
+- `2026-05-25` — **S8 (acts) complete.** `lib/acts/numbering.ts` — `nextActNumber` з `SELECT ... FOR UPDATE` на acts по `(client_id, year, month)` + UNIQUE index як двошаровий захист. `lib/acts/generate-pdf.ts` — async trigger через internal fetch до `/api/acts/{id}/pdf`. `app/api/acts/[id]/pdf/route.ts` — React + Tailwind → headless Chromium (`@sparticuz/chromium`) → PDF buffer → Vercel Blob (private). `lib/blob/` — `uploadActPdf` / `getActPdfDownloadUrl`. Act creation integrated into classification pipeline (`run-classification.ts` → `triggerPdfGeneration`). UI: `/acts` (список з фільтрами status/period/client/service_type/edo_provider), `/acts/[id]` (snapshot panel з "Збережено на момент генерації", download PDF, regenerate PDF, editable service_description для draft/vchasno). Server actions: `regeneratePdfAction`, `updateServiceDescriptionAction`, `getDownloadUrlAction`. `npm run qa` — 6/6 green. PRD coverage: FR-ACT-01..10, NFR-PERF-03, TC-INTEG-05, TC-INTEG-12.
 - `2026-05-25` — **S7 (classification) complete.** `lib/classification/` — pure 8-step classification pipeline (parse-contract-numbers, match-client, detect-service-type, check-completeness, resolve-quantity, classify, act-stub) + DB orchestrator `run-classification.ts` з `SELECT ... FOR UPDATE` у websocket transaction (`dbPool`). `lib/db/schema/acts.ts` (таблиця `acts` з 20 полями, pgEnum `act_status`, UNIQUE `(client_id, act_date, number)`, FK RESTRICT до clients, FK до payments); міграція `0009_add_acts.sql` applied. FK `payments.act_id → acts.id ON DELETE SET NULL`. Classification auto-trigger після PrivatBank polling (`app/api/cron/privatbank-poll/route.ts` → `classifyInserted`). Server actions `classifyPaymentAction` / `skipPaymentAction`. UI: `ClassificationPanel` на `/payments/[id]` з кнопками "Класифікувати"/"Пропустити", reason-specific guidance для 8 reasons, act link для classified, badge для skipped. `scripts/seed-classification-test.mjs` — 6 тестових платежів для ручної перевірки. 176/176 unit-тестів (56 нових: 7 test files для classification). `npm run qa` — 6/6 green. PRD coverage: FR-CLASS-01..18, FR-EDGE-03. Spec archived до `openspec/specs/classification/spec.md`.
 - `2026-05-25` — **S6 (payments-ingest) complete.** `lib/db/schema/payments.ts` (таблиця `payments` з 20 полями, pgEnum `payment_status` (received/classified/awaiting_review/in_queue/skipped), UNIQUE `bank_transaction_id`, 3 індекси); міграція `0008_add_payments.sql` applied. `lib/external-apis/privatbank/` — HTTP client з recursive retry/backoff (1s/5s/30s), 401 AuthError, 429 Retry-After; mapper API → Payment (FR-PAY-05); `pollPrivatbank()` з overlapping window (2× interval), idempotent INSERT ON CONFLICT DO NOTHING, integration_health updates. Cron handler `app/api/cron/privatbank-poll/route.ts` з CRON_SECRET guard; registered в `vercel.ts` (`0 * * * *`). Server action `triggerPrivatbankPollNow`. UI: `/payments` (список з status/search фільтрами), `/payments/[id]` (картка з collapsible raw_data JSON). "Платежі" link у top-bar. MSW installed (D-039), handler у `tests/mocks/handlers/privatbank.ts`. 120/120 unit-тестів (7 нових: 3 mapper + 4 client via MSW). `npm run qa` — 6/6 green. PRD coverage: FR-PAY-01..08, NFR-PERF-01, TC-INTEG-01, TC-INTEG-10. Spec archived до `openspec/specs/payments-ingest/spec.md`.
 - `2026-05-25` — **S5 (settings) complete.** `lib/db/schema/settings.ts` (KV-таблиця `settings` з `key TEXT PK`, `value JSONB`); міграції `0006_add_settings.sql` + `0007_seed_settings.sql` (5 regex-патернів, sms_keywords, transit_edrpou_list, 3 інтервали). `lib/settings/index.ts` — typed getters (`getContractPatterns`, `getSmsKeywords`, `getTransitEdrpouList`, `getPollingIntervals`) + `setSettingValue` upsert. UI: `/settings/patterns` (CRUD + live test-area з match highlight + captured groups), `/settings/sms-keywords` (chip-editor), `/settings/transit-edrpou` (chip-editor з 8-digit validation), `/settings/integrations` (3 placeholder status cards + editable intervals form). Sidebar nav розширено до 6 entries. 113/113 unit-тестів (13 нових: 5 accessors + 8 validation). `npm run qa` — 6/6 green. PRD coverage: FR-SET-03..07. Spec archived до `openspec/specs/settings/spec.md`.

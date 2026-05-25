@@ -73,6 +73,8 @@ export default async function ActPage({ params }: Props) {
           edoProvider={act.edoProvider}
           serviceDescription={act.serviceDescription}
           hasPdf={act.pdfFileUrl !== null}
+          edoDocId={act.edoDocId}
+          edoStatus={act.edoStatus}
         />
       </div>
     </div>
