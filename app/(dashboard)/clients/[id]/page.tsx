@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
+import { contracts } from "@/lib/db/schema/contracts";
 
 import { ClientCard } from "./client-card";
 
@@ -26,5 +27,6 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { tab } = await searchParams;
   const [client] = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
   if (!client) notFound();
-  return <ClientCard client={client} activeTab={tab ?? "info"} />;
+  const [contract] = await db.select().from(contracts).where(eq(contracts.clientId, id)).limit(1);
+  return <ClientCard client={client} contract={contract ?? null} activeTab={tab ?? "info"} />;
 }

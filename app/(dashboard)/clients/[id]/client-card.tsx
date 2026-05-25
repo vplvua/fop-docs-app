@@ -3,10 +3,12 @@
 import Link from "next/link";
 
 import type { Client } from "@/lib/db/schema/clients";
+import type { Contract } from "@/lib/db/schema/contracts";
 
 import { activateClientAction, archiveClientAction } from "../actions";
 
 import { ClientInfoForm } from "./client-info-form";
+import { ContractForm } from "./contract-form";
 
 const TABS = [
   { key: "info", label: "Загальна інформація" },
@@ -71,10 +73,18 @@ function ContractWarning() {
   );
 }
 
-function TabContent({ tab, client }: { tab: string; client: Client }) {
+function TabContent({
+  tab,
+  client,
+  contract,
+}: {
+  tab: string;
+  client: Client;
+  contract: Contract | null;
+}) {
   switch (tab) {
     case "contract":
-      return <StubTab message="Додайте договір у Slice 3." />;
+      return <ContractForm contract={contract} client={client} />;
     case "payments":
       return <StubTab message="Платежі з'являться у Slice 6." />;
     case "acts":
@@ -84,18 +94,26 @@ function TabContent({ tab, client }: { tab: string; client: Client }) {
   }
 }
 
-export function ClientCard({ client, activeTab }: { client: Client; activeTab: string }) {
+export function ClientCard({
+  client,
+  contract,
+  activeTab,
+}: {
+  client: Client;
+  contract: Contract | null;
+  activeTab: string;
+}) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
         <ArchiveButton client={client} />
       </div>
-      <ContractWarning />
+      {contract ? null : <ContractWarning />}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <TabNav clientId={client.id} active={activeTab} />
         <div className="p-6">
-          <TabContent tab={activeTab} client={client} />
+          <TabContent tab={activeTab} client={client} contract={contract} />
         </div>
       </div>
     </div>

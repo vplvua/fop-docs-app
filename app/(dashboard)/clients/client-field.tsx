@@ -3,7 +3,7 @@
 interface Props {
   id: string;
   label: string;
-  type?: "text" | "email" | "number";
+  type?: "text" | "email" | "number" | "date";
   defaultValue?: string | number | null | undefined;
   error?: string | undefined;
   required?: boolean | undefined;
