@@ -2,21 +2,29 @@
 
 import { eq, sql } from "drizzle-orm";
 
-import { triggerPdfGeneration } from "@/lib/acts/generate-pdf";
+import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
 
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
-  const [act] = await db.select({ id: acts.id }).from(acts).where(eq(acts.id, actId)).limit(1);
+  const [act] = await db
+    .select({ id: acts.id, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
   if (!act) return { ok: false, error: "Акт не знайдено" };
 
   try {
-    await triggerPdfGeneration(actId);
+    await generateAndStoreActPdf(actId);
+    if (act.edoProvider === "dubidoc") {
+      sendActToDubidoc(actId).catch(() => {});
+    }
     return { ok: true };
-  } catch {
-    return { ok: false, error: "Помилка генерації PDF" };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Невідома помилка";
+    return { ok: false, error: `Помилка генерації PDF: ${msg}` };
   }
 }
 
@@ -42,7 +50,7 @@ export async function updateServiceDescriptionAction(
     .set({ serviceDescription: description, updatedAt: sql`now()` })
     .where(eq(acts.id, actId));
 
-  triggerPdfGeneration(actId).catch(() => {});
+  generateAndStoreActPdf(actId).catch(() => {});
 
   return { ok: true };
 }

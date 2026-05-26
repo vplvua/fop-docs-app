@@ -1,27 +1,23 @@
+import { eq, sql } from "drizzle-orm";
+
+import { uploadActPdf } from "@/lib/blob";
+import { db } from "@/lib/db";
+import { acts } from "@/lib/db/schema/acts";
 import { logger } from "@/lib/logging";
+import { renderActPdf } from "@/lib/pdf/render";
 
-export async function triggerPdfGeneration(actId: string): Promise<void> {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : `http://localhost:${process.env.PORT ?? "3000"}`;
+export async function generateAndStoreActPdf(actId: string): Promise<string> {
+  const [act] = await db.select().from(acts).where(eq(acts.id, actId)).limit(1);
+  if (!act) throw new Error("Act not found");
 
-  try {
-    const res = await fetch(`${baseUrl}/api/acts/${actId}/pdf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
+  const pdfBuffer = await renderActPdf(act);
+  const blobUrl = await uploadActPdf(actId, pdfBuffer);
 
-    if (!res.ok) {
-      const body = await res.text();
-      logger.warn(
-        { event: "act.pdf_trigger_failed", actId, status: res.status, body },
-        "PDF trigger failed",
-      );
-    } else {
-      logger.info({ event: "act.pdf_triggered", actId }, "PDF generation triggered");
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown";
-    logger.warn({ event: "act.pdf_trigger_error", actId, error: msg }, "PDF trigger error");
-  }
+  await db
+    .update(acts)
+    .set({ pdfFileUrl: blobUrl, updatedAt: sql`now()` })
+    .where(eq(acts.id, actId));
+
+  logger.info({ event: "act.pdf_generated", actId }, "PDF generated");
+  return blobUrl;
 }

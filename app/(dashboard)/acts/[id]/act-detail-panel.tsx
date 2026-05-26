@@ -48,23 +48,32 @@ function DownloadButton({ actId, hasPdf }: { actId: string; hasPdf: boolean }) {
 function RegenerateButton({ actId }: { actId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRegenerate = useCallback(async () => {
     setLoading(true);
-    await regeneratePdfAction(actId);
+    setError(null);
+    const result = await regeneratePdfAction(actId);
     setLoading(false);
-    router.refresh();
+    if (result.ok) {
+      router.refresh();
+    } else {
+      setError(result.error ?? "Невідома помилка");
+    }
   }, [actId, router]);
 
   return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={handleRegenerate}
-      className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-    >
-      {loading ? "Генерація…" : "Перегенерувати PDF"}
-    </button>
+    <div>
+      <button
+        type="button"
+        disabled={loading}
+        onClick={handleRegenerate}
+        className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+      >
+        {loading ? "Генерація…" : "Перегенерувати PDF"}
+      </button>
+      {error ? <p className="mt-1 text-xs text-semantic-error">{error}</p> : null}
+    </div>
   );
 }
 

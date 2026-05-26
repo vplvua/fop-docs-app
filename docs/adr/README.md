@@ -61,6 +61,7 @@
 | D-037 | Quality gates stack: oxlint + prettier + vitest + qa-verify + hooks + RBP          | [D-037-quality-gates-stack.md](D-037-quality-gates-stack.md)         |
 | D-038 | Drizzle ORM як шар доступу до Postgres                                             | [D-038-drizzle-orm.md](D-038-drizzle-orm.md)                         |
 | D-039 | MSW як єдина стратегія HTTP-моків у тестах                                         | [D-039-test-http-mocks.md](D-039-test-http-mocks.md)                 |
+| D-040 | PDF генерація напряму з server action, без HTTP-hop                                | [D-040-pdf-direct-call.md](D-040-pdf-direct-call.md)                 |
 
 ## Як посилатись на ADR
 

@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 
-import { triggerPdfGeneration } from "@/lib/acts/generate-pdf";
+import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
 import { nextActNumber } from "@/lib/acts/numbering";
 import { dbPool, schema } from "@/lib/db";
 import { logger } from "@/lib/logging";
@@ -133,7 +133,7 @@ export async function runClassification(paymentId: string): Promise<Classificati
   });
 
   if (result.actId) {
-    triggerPdfGeneration(result.actId).catch(() => {});
+    generateAndStoreActPdf(result.actId).catch(() => {});
   }
 
   return result.classResult;
