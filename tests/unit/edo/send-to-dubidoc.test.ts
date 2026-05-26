@@ -29,8 +29,12 @@ vi.mock("@/lib/observability", () => ({
   recordIntegrationError: vi.fn(),
 }));
 
-import { createDocument, actToCreateDocumentPayload } from "@/lib/external-apis/dubidoc";
-import { recordIntegrationSuccess, recordIntegrationError } from "@/lib/observability";
+vi.mock("@/lib/pdf/render", () => ({
+  renderActPdf: vi.fn().mockResolvedValue(Buffer.from("fake-pdf")),
+}));
+
+import { actToCreateDocumentPayload, createDocument } from "@/lib/external-apis/dubidoc";
+import { recordIntegrationError, recordIntegrationSuccess } from "@/lib/observability";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 
 const mockCreateDocument = vi.mocked(createDocument);
@@ -46,8 +50,22 @@ function makeAct(overrides = {}) {
     status: "draft",
     edoProvider: "dubidoc",
     edoDocId: null,
-    pdfFileUrl: "https://blob.example.com/acts/act-001.pdf",
-    clientSnapshot: { email: "test@example.com", legalId: "12345678" },
+    pdfFileUrl: "generated",
+    clientSnapshot: {
+      name: "Test",
+      legalId: "12345678",
+      address: "Kyiv",
+      email: "test@example.com",
+      bankName: null,
+      bankAccount: null,
+    },
+    contractSnapshot: { number: "100", signedDate: "2024-06-01" },
+    actDate: "2024-06-30",
+    number: "1",
+    serviceDescription: "Test service",
+    unitPrice: "10.00",
+    quantity: "5.00",
+    quantityUnit: "шт.",
     ...overrides,
   };
 }
@@ -56,7 +74,6 @@ describe("sendActToDubidoc", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDbResult.rows = [];
-    globalThis.fetch = vi.fn();
   });
 
   it("skips if act not found", async () => {
@@ -85,18 +102,8 @@ describe("sendActToDubidoc", () => {
     expect(mockCreateDocument).not.toHaveBeenCalled();
   });
 
-  it("skips if no PDF url", async () => {
-    mockDbResult.rows = [makeAct({ pdfFileUrl: null })];
-    const result = await sendActToDubidoc("act-001");
-    expect(result.skipped).toBe(true);
-    expect(result.error).toBe("PDF not generated yet");
-  });
-
   it("sends to DubiDoc on success path", async () => {
     mockDbResult.rows = [makeAct()];
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
-      new Response(Buffer.from("fake-pdf"), { status: 200 }),
-    );
     mockMapper.mockReturnValueOnce({ file: "base64" } as never);
     mockCreateDocument.mockResolvedValueOnce({ id: "doc-999", status: "new" });
 
@@ -109,9 +116,6 @@ describe("sendActToDubidoc", () => {
 
   it("returns error on DubiDoc failure", async () => {
     mockDbResult.rows = [makeAct()];
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
-      new Response(Buffer.from("pdf"), { status: 200 }),
-    );
     mockMapper.mockReturnValueOnce({ file: "base64" } as never);
     mockCreateDocument.mockRejectedValueOnce(new Error("DubiDoc down"));
 
