@@ -1,10 +1,11 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { acts } from "@/lib/db/schema/acts";
+import { type Act, acts } from "@/lib/db/schema/acts";
 import { actToCreateDocumentPayload, createDocument } from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 import { recordIntegrationError, recordIntegrationSuccess } from "@/lib/observability";
+import { renderActPdf } from "@/lib/pdf/render";
 
 export interface SendResult {
   sent: boolean;
@@ -12,35 +13,22 @@ export interface SendResult {
   error?: string;
 }
 
+function shouldSkip(act: Act): SendResult | null {
+  if (act.edoProvider !== "dubidoc") return { sent: false, skipped: true };
+  if (act.status !== "draft") return { sent: false, skipped: true };
+  if (act.edoDocId) return { sent: false, skipped: true };
+  return null;
+}
+
 export async function sendActToDubidoc(actId: string): Promise<SendResult> {
   const [act] = await db.select().from(acts).where(eq(acts.id, actId)).limit(1);
+  if (!act) return { sent: false, skipped: true, error: "Act not found" };
 
-  if (!act) {
-    return { sent: false, skipped: true, error: "Act not found" };
-  }
-
-  if (act.edoProvider !== "dubidoc") {
-    return { sent: false, skipped: true };
-  }
-
-  if (act.status !== "draft") {
-    return { sent: false, skipped: true };
-  }
-
-  if (act.edoDocId) {
-    return { sent: false, skipped: true };
-  }
-
-  if (!act.pdfFileUrl) {
-    return { sent: false, skipped: true, error: "PDF not generated yet" };
-  }
+  const skip = shouldSkip(act);
+  if (skip) return skip;
 
   try {
-    const pdfResponse = await fetch(act.pdfFileUrl);
-    if (!pdfResponse.ok) {
-      throw new Error(`Failed to download PDF: ${String(pdfResponse.status)}`);
-    }
-    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+    const pdfBuffer = await renderActPdf(act);
     const pdfBase64 = pdfBuffer.toString("base64");
 
     const payload = actToCreateDocumentPayload(act, pdfBase64);
@@ -57,7 +45,6 @@ export async function sendActToDubidoc(actId: string): Promise<SendResult> {
       .where(eq(acts.id, actId));
 
     await recordIntegrationSuccess("dubidoc");
-
     logger.info(
       { event: "edo.sent_to_dubidoc", actId, edoDocId: response.id },
       "Act sent to DubiDoc",

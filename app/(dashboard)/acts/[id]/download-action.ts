@@ -2,7 +2,6 @@
 
 import { eq } from "drizzle-orm";
 
-import { getActPdfDownloadUrl } from "@/lib/blob";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 
@@ -18,10 +17,5 @@ export async function getDownloadUrlAction(
   if (!act) return { ok: false, error: "Акт не знайдено" };
   if (!act.pdfFileUrl) return { ok: false, error: "PDF ще не згенеровано" };
 
-  try {
-    const url = await getActPdfDownloadUrl(act.pdfFileUrl);
-    return { ok: true, url };
-  } catch {
-    return { ok: false, error: "Помилка отримання URL" };
-  }
+  return { ok: true, url: `/api/acts/${actId}/pdf` };
 }
