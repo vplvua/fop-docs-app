@@ -1,5 +1,6 @@
-import type { Act } from "@/lib/db/schema/acts";
+import { Document, Font, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
+import type { Act } from "@/lib/db/schema/acts";
 import type { ClientSnapshot, ContractSnapshot } from "@/lib/classification/types";
 
 interface FopDetails {
@@ -15,6 +16,19 @@ export interface ActTemplateProps {
   fop: FopDetails;
 }
 
+Font.register({
+  family: "Times",
+  fonts: [
+    {
+      src: "https://cdn.jsdelivr.net/npm/@canvas-fonts/times-new-roman@1.0.4/Times%20New%20Roman.ttf",
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@canvas-fonts/times-new-roman-bold@1.0.4/Times%20New%20Roman%20Bold.ttf",
+      fontWeight: "bold",
+    },
+  ],
+});
+
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
   return `${d}.${m}.${y}`;
@@ -24,111 +38,123 @@ function totalAmount(unitPrice: string, quantity: string): string {
   return (Number(unitPrice) * Number(quantity)).toFixed(2);
 }
 
-const TEMPLATE_CSS = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; padding: 40px 50px; }
-  h1 { font-size: 14pt; text-align: center; margin: 24px 0 16px; }
-  .center { text-align: center; font-size: 11pt; }
-  .center-mt { text-align: center; font-size: 11pt; margin-top: 4px; }
-  .parties { margin-bottom: 20px; line-height: 1.6; }
-  .parties p { margin-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; font-size: 11pt; }
-  th { background: #f0f0f0; font-weight: bold; }
-  .w5 { width: 5%; } .w12 { width: 12%; } .w15 { width: 15%; }
-  .total { font-weight: bold; }
-  .total-right { font-weight: bold; text-align: right; }
-  .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
-  .sig-block { width: 45%; }
-  .sig-line { border-bottom: 1px solid #000; margin-top: 40px; margin-bottom: 4px; }
-  .sig-label { font-size: 10pt; }
-  .note { font-size: 10pt; color: #333; margin-top: 8px; }
-`;
+const cell = { borderWidth: 1, borderColor: "#000", padding: 5, fontSize: 10 } as const;
+const thBase = { ...cell, backgroundColor: "#f0f0f0", fontWeight: "bold" } as const;
 
-const cssInject = { __html: TEMPLATE_CSS };
+const s = StyleSheet.create({
+  page: {
+    fontFamily: "Times",
+    fontSize: 11,
+    paddingTop: 40,
+    paddingBottom: 40,
+    paddingHorizontal: 50,
+  },
+  title: { fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 20, marginBottom: 8 },
+  center: { textAlign: "center", fontSize: 10, marginBottom: 2 },
+  bold: { fontWeight: "bold" },
+
+  parties: { marginTop: 16, marginBottom: 12, lineHeight: 1.6 },
+  partyLine: { marginBottom: 4, fontSize: 10 },
+
+  table: { marginTop: 12, marginBottom: 12 },
+  tableRow: { flexDirection: "row" },
+
+  thNum: { ...thBase, width: "5%" },
+  thName: { ...thBase, width: "43%" },
+  thQty: { ...thBase, width: "15%" },
+  thPrice: { ...thBase, width: "17%" },
+  thSum: { ...thBase, width: "20%" },
+
+  tdNum: { ...cell, width: "5%" },
+  tdName: { ...cell, width: "43%" },
+  tdQty: { ...cell, width: "15%" },
+  tdPrice: { ...cell, width: "17%" },
+  tdSum: { ...cell, width: "20%" },
+
+  totalLabel: { ...cell, width: "80%", textAlign: "right", fontWeight: "bold" },
+  totalValue: { ...cell, width: "20%", fontWeight: "bold" },
+
+  note: { fontSize: 9, color: "#333", marginTop: 8 },
+
+  signatures: { flexDirection: "row", justifyContent: "space-between", marginTop: 40 },
+  sigBlock: { width: "45%" },
+  sigLine: { borderBottomWidth: 1, borderBottomColor: "#000", marginTop: 36, marginBottom: 4 },
+  sigLabel: { fontSize: 9 },
+});
 
 function ActHeader({ act, contract }: { act: Act; contract: ContractSnapshot }) {
   return (
-    <div>
-      <h1>АКТ {act.number} виконаних робіт (наданих послуг)</h1>
-      <p className="center">від {formatDate(act.actDate)} р.</p>
-      <p className="center-mt">
+    <View>
+      <Text style={s.title}>АКТ {act.number} виконаних робіт (наданих послуг)</Text>
+      <Text style={s.center}>від {formatDate(act.actDate)} р.</Text>
+      <Text style={s.center}>
         по договору №{contract.number} від {formatDate(contract.signedDate)} р.
-      </p>
-    </div>
+      </Text>
+    </View>
   );
 }
 
 function Parties({ fop, client }: { fop: FopDetails; client: ClientSnapshot }) {
   return (
-    <div className="parties">
-      <p>
-        <strong>Виконавець:</strong> {fop.name}, ЄДРПОУ/РНОКПП: {fop.legalId}, {fop.address}.
-        Поточний рахунок: {fop.bankAccount} в {fop.bankName}.
-      </p>
-      <p>
-        <strong>Замовник:</strong> {client.name}, ЄДРПОУ: {client.legalId}, {client.address}.
+    <View style={s.parties}>
+      <Text style={s.partyLine}>
+        <Text style={s.bold}>Виконавець: </Text>
+        {fop.name}, ЄДРПОУ/РНОКПП: {fop.legalId}, {fop.address}. Поточний рахунок: {fop.bankAccount}{" "}
+        в {fop.bankName}.
+      </Text>
+      <Text style={s.partyLine}>
+        <Text style={s.bold}>Замовник: </Text>
+        {client.name}, ЄДРПОУ: {client.legalId}, {client.address}.
         {client.bankAccount
           ? ` Поточний рахунок: ${client.bankAccount} в ${client.bankName ?? ""}.`
           : ""}
-      </p>
-    </div>
+      </Text>
+    </View>
   );
 }
 
 function ServiceTable({ act, total }: { act: Act; total: string }) {
   return (
-    <table>
-      <thead>
-        <tr>
-          <th className="w5">№</th>
-          <th>Найменування послуги</th>
-          <th className="w12">Кількість</th>
-          <th className="w15">Ціна, грн</th>
-          <th className="w15">Сума, грн</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>{act.serviceDescription}</td>
-          <td>
-            {act.quantity} {act.quantityUnit}
-          </td>
-          <td>{act.unitPrice}</td>
-          <td>{total}</td>
-        </tr>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colSpan={4} className="total-right">
-            Всього:
-          </td>
-          <td className="total">{total} грн</td>
-        </tr>
-      </tfoot>
-    </table>
+    <View style={s.table}>
+      <View style={s.tableRow}>
+        <Text style={s.thNum}>№</Text>
+        <Text style={s.thName}>Найменування послуги</Text>
+        <Text style={s.thQty}>Кількість</Text>
+        <Text style={s.thPrice}>Ціна, грн</Text>
+        <Text style={s.thSum}>Сума, грн</Text>
+      </View>
+      <View style={s.tableRow}>
+        <Text style={s.tdNum}>1</Text>
+        <Text style={s.tdName}>{act.serviceDescription}</Text>
+        <Text style={s.tdQty}>
+          {act.quantity} {act.quantityUnit}
+        </Text>
+        <Text style={s.tdPrice}>{act.unitPrice}</Text>
+        <Text style={s.tdSum}>{total}</Text>
+      </View>
+      {/* Footer */}
+      <View style={s.tableRow}>
+        <Text style={s.totalLabel}>Всього:</Text>
+        <Text style={s.totalValue}>{total} грн</Text>
+      </View>
+    </View>
   );
 }
 
 function Signatures({ fop, client }: { fop: FopDetails; client: ClientSnapshot }) {
   return (
-    <div className="signatures">
-      <div className="sig-block">
-        <p>
-          <strong>Виконавець:</strong>
-        </p>
-        <div className="sig-line" />
-        <p className="sig-label">{fop.name}</p>
-      </div>
-      <div className="sig-block">
-        <p>
-          <strong>Замовник:</strong>
-        </p>
-        <div className="sig-line" />
-        <p className="sig-label">{client.name}</p>
-      </div>
-    </div>
+    <View style={s.signatures}>
+      <View style={s.sigBlock}>
+        <Text style={s.bold}>Виконавець:</Text>
+        <View style={s.sigLine} />
+        <Text style={s.sigLabel}>{fop.name}</Text>
+      </View>
+      <View style={s.sigBlock}>
+        <Text style={s.bold}>Замовник:</Text>
+        <View style={s.sigLine} />
+        <Text style={s.sigLabel}>{client.name}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -138,19 +164,14 @@ export function ActTemplate({ act, fop }: ActTemplateProps) {
   const total = totalAmount(act.unitPrice, act.quantity);
 
   return (
-    <html lang="uk">
-      <head>
-        <meta charSet="utf-8" />
-        {/* eslint-disable-next-line react/no-danger -- static CSS literal */}
-        <style dangerouslySetInnerHTML={cssInject} />
-      </head>
-      <body>
+    <Document>
+      <Page size="A4" style={s.page}>
         <ActHeader act={act} contract={contract} />
         <Parties fop={fop} client={client} />
         <ServiceTable act={act} total={total} />
-        <p className="note">Без ПДВ згідно ст. 297 ПКУ (ФОП 3 група єдиного податку).</p>
+        <Text style={s.note}>Без ПДВ згідно ст. 297 ПКУ (ФОП 3 група єдиного податку).</Text>
         <Signatures fop={fop} client={client} />
-      </body>
-    </html>
+      </Page>
+    </Document>
   );
 }

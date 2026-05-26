@@ -1,21 +1,10 @@
-import { existsSync } from "node:fs";
+import { createElement } from "react";
+
+import { renderToBuffer } from "@react-pdf/renderer";
 
 import type { Act } from "@/lib/db/schema/acts";
 
-const LOCAL_CHROME_PATHS = [
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/usr/bin/google-chrome-stable",
-  "/usr/bin/chromium-browser",
-  "/usr/bin/chromium",
-];
-
-async function resolveChromiumPath(): Promise<string> {
-  const local = LOCAL_CHROME_PATHS.find((p) => existsSync(p));
-  if (local) return local;
-
-  const chromium = await import("@sparticuz/chromium");
-  return chromium.default.executablePath();
-}
+import { ActTemplate } from "./act-template";
 
 function getFopDetails() {
   return {
@@ -28,30 +17,12 @@ function getFopDetails() {
 }
 
 export async function renderActPdf(act: Act): Promise<Buffer> {
-  const { createElement } = await import("react");
-  const { renderToStaticMarkup } = await import("react-dom/server");
-  const { ActTemplate } = await import("./act-template");
-
   const fop = getFopDetails();
-  const html = renderToStaticMarkup(createElement(ActTemplate, { act, fop }));
-  const fullHtml = `<!DOCTYPE html>${html}`;
-
-  const puppeteer = await import("puppeteer-core");
-  const executablePath = await resolveChromiumPath();
-
-  const browser = await puppeteer.default.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    defaultViewport: { width: 794, height: 1123 },
-    executablePath,
-    headless: true,
+  const doc = createElement(ActTemplate, {
+    act,
+    fop,
   });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(fullHtml, { waitUntil: "domcontentloaded" });
-    const pdf = await page.pdf({ format: "A4", printBackground: true });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
-  }
+  // renderToBuffer expects ReactElement<DocumentProps> but our wrapper component returns <Document> inside
+  const buffer = await renderToBuffer(doc as Parameters<typeof renderToBuffer>[0]);
+  return Buffer.from(buffer);
 }
