@@ -68,9 +68,10 @@ async function handleRetry(
 
 export async function fetchTransactions(
   token: string,
+  account: string,
   dateFrom: string,
   dateTo: string,
 ): Promise<PrivatBankTransaction[]> {
-  const url = `${API_BASE}?startDate=${dateFrom}&endDate=${dateTo}`;
+  const url = `${API_BASE}?acc=${account}&startDate=${dateFrom}&endDate=${dateTo}&limit=100`;
   return attemptFetch(url, token, 0);
 }

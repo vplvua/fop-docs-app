@@ -8,7 +8,10 @@ import { fetchTransactions } from "./client";
 import { mapTransaction } from "./mapper";
 
 function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear());
+  return `${day}-${month}-${year}`;
 }
 
 interface PollResult {
@@ -19,9 +22,13 @@ interface PollResult {
 
 export async function pollPrivatbank(): Promise<PollResult> {
   const token = process.env.PRIVATBANK_TOKEN;
-  if (!token) {
-    logger.error({ event: "privatbank.no_token" }, "PRIVATBANK_TOKEN not set");
-    await recordIntegrationError("privatbank", new Error("PRIVATBANK_TOKEN not set"));
+  const account = process.env.FOP_BANK_ACCOUNT;
+  if (!token || !account) {
+    const missing = [!token && "PRIVATBANK_TOKEN", !account && "FOP_BANK_ACCOUNT"]
+      .filter(Boolean)
+      .join(", ");
+    logger.error({ event: "privatbank.missing_env", missing }, "required env vars not set");
+    await recordIntegrationError("privatbank", new Error(`${missing} not set`));
     return { inserted: 0, total: 0, insertedIds: [] };
   }
 
@@ -32,7 +39,7 @@ export async function pollPrivatbank(): Promise<PollResult> {
   const dateTo = formatDate(now);
 
   try {
-    const transactions = await fetchTransactions(token, dateFrom, dateTo);
+    const transactions = await fetchTransactions(token, account, dateFrom, dateTo);
     logger.info(
       { event: "privatbank.fetched", count: transactions.length, dateFrom, dateTo },
       "fetched transactions from PrivatBank",
