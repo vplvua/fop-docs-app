@@ -2,17 +2,9 @@ import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema/payments";
 import { logger } from "@/lib/logging";
 import { recordIntegrationError, recordIntegrationSuccess } from "@/lib/observability";
-import { getPollingIntervals } from "@/lib/settings";
 
 import { fetchTransactions } from "./client";
 import { mapTransaction } from "./mapper";
-
-function formatDate(d: Date): string {
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = String(d.getFullYear());
-  return `${day}-${month}-${year}`;
-}
 
 interface PollResult {
   inserted: number;
@@ -32,16 +24,10 @@ export async function pollPrivatbank(): Promise<PollResult> {
     return { inserted: 0, total: 0, insertedIds: [] };
   }
 
-  const { privatbankMinutes } = await getPollingIntervals();
-  const now = new Date();
-  const windowMs = privatbankMinutes * 2 * 60 * 1000;
-  const dateFrom = formatDate(new Date(now.getTime() - windowMs));
-  const dateTo = formatDate(now);
-
   try {
-    const transactions = await fetchTransactions(token, account, dateFrom, dateTo);
+    const transactions = await fetchTransactions(token, account);
     logger.info(
-      { event: "privatbank.fetched", count: transactions.length, dateFrom, dateTo },
+      { event: "privatbank.fetched", count: transactions.length },
       "fetched transactions from PrivatBank",
     );
 

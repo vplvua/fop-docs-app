@@ -1,10 +1,10 @@
 import { logger } from "@/lib/logging";
 
 import { PrivatBankApiError, PrivatBankAuthError } from "./types";
-import type { PrivatBankTransaction } from "./types";
+import type { PrivatBankTransaction, PrivatBankTransactionsResponse } from "./types";
 
 const RETRY_DELAYS = [1000, 5000, 30000];
-const API_BASE = "https://acp.privatbank.ua/api/statements/transactions";
+const API_BASE = "https://acp.privatbank.ua/api/statements/transactions/interim";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -16,7 +16,7 @@ async function attemptFetch(
   url: string,
   token: string,
   attempt: number,
-): Promise<PrivatBankTransaction[]> {
+): Promise<PrivatBankTransactionsResponse> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -46,8 +46,7 @@ async function attemptFetch(
     );
   }
 
-  const data: unknown = await res.json();
-  return Array.isArray(data) ? (data as PrivatBankTransaction[]) : [];
+  return (await res.json()) as PrivatBankTransactionsResponse;
 }
 
 async function handleRetry(
@@ -55,7 +54,7 @@ async function handleRetry(
   token: string,
   attempt: number,
   err: Error,
-): Promise<PrivatBankTransaction[]> {
+): Promise<PrivatBankTransactionsResponse> {
   if (attempt >= RETRY_DELAYS.length) throw err;
   const delay = RETRY_DELAYS[attempt] ?? 1000;
   logger.warn(
@@ -66,12 +65,43 @@ async function handleRetry(
   return attemptFetch(url, token, attempt + 1);
 }
 
+async function fetchPage(
+  token: string,
+  account: string,
+  followId: string | null,
+): Promise<{ transactions: PrivatBankTransaction[]; nextPageId: string | null }> {
+  const url = new URL(API_BASE);
+  url.searchParams.set("acc", account);
+  url.searchParams.set("limit", "100");
+  if (followId) {
+    url.searchParams.set("followId", followId);
+  }
+
+  const data = await attemptFetch(url.toString(), token, 0);
+
+  if (data.status !== "SUCCESS") {
+    throw new PrivatBankApiError(200, `PrivatBank API status: ${data.status}`);
+  }
+
+  const confirmed = data.transactions.filter((txn) => txn.PR_PR === "r" && txn.FL_REAL === "r");
+  return { transactions: confirmed, nextPageId: data.exist_next_page ? data.next_page_id : null };
+}
+
+async function fetchAllPages(
+  token: string,
+  account: string,
+  followId: string | null,
+  accumulated: PrivatBankTransaction[],
+): Promise<PrivatBankTransaction[]> {
+  const result = await fetchPage(token, account, followId);
+  const all = [...accumulated, ...result.transactions];
+  if (!result.nextPageId) return all;
+  return fetchAllPages(token, account, result.nextPageId, all);
+}
+
 export async function fetchTransactions(
   token: string,
   account: string,
-  dateFrom: string,
-  dateTo: string,
 ): Promise<PrivatBankTransaction[]> {
-  const url = `${API_BASE}?acc=${account}&startDate=${dateFrom}&endDate=${dateTo}&limit=100`;
-  return attemptFetch(url, token, 0);
+  return fetchAllPages(token, account, null, []);
 }
