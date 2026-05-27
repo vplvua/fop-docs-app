@@ -6,6 +6,7 @@ import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
+import { validateVchasnoTransition } from "@/lib/edo/vchasno-state";
 import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
 
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
@@ -51,6 +52,48 @@ export async function updateServiceDescriptionAction(
     .where(eq(acts.id, actId));
 
   generateAndStoreActPdf(actId).catch(() => {});
+
+  return { ok: true };
+}
+
+export async function markActSignedAction(actId: string): Promise<{ ok: boolean; error?: string }> {
+  const [act] = await db
+    .select({ status: acts.status, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
+
+  if (!act) return { ok: false, error: "Акт не знайдено" };
+
+  const validation = validateVchasnoTransition(act.status, "signed", act.edoProvider);
+  if (!validation.ok) return { ok: false, error: validation.error };
+
+  await db
+    .update(acts)
+    .set({ status: "signed", updatedAt: sql`now()` })
+    .where(eq(acts.id, actId));
+
+  return { ok: true };
+}
+
+export async function unmarkActSignedAction(
+  actId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const [act] = await db
+    .select({ status: acts.status, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
+
+  if (!act) return { ok: false, error: "Акт не знайдено" };
+
+  const validation = validateVchasnoTransition(act.status, "draft", act.edoProvider);
+  if (!validation.ok) return { ok: false, error: validation.error };
+
+  await db
+    .update(acts)
+    .set({ status: "draft", updatedAt: sql`now()` })
+    .where(eq(acts.id, actId));
 
   return { ok: true };
 }

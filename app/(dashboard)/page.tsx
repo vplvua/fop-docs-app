@@ -1,4 +1,5 @@
 import { DubidocPollButton } from "./dubidoc-poll-button";
+import { MoeosbbSyncButton } from "./moeosbb-sync-button";
 
 export default function DashboardPage() {
   return (
@@ -12,7 +13,10 @@ export default function DashboardPage() {
       </div>
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-medium text-foreground">Ручні дії</h2>
-        <DubidocPollButton />
+        <div className="space-y-3">
+          <DubidocPollButton />
+          <MoeosbbSyncButton />
+        </div>
       </div>
     </section>
   );

@@ -8,6 +8,7 @@ import type { Contract } from "@/lib/db/schema/contracts";
 import { activateClientAction, archiveClientAction } from "../actions";
 
 import { ClientInfoForm } from "./client-info-form";
+import { ClientSyncButton } from "./client-sync-button";
 import { ContractForm } from "./contract-form";
 
 const TABS = [
@@ -107,7 +108,10 @@ export function ClientCard({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
-        <ArchiveButton client={client} />
+        <div className="flex items-center gap-2">
+          {client.moeosbbUserId ? <ClientSyncButton clientId={client.id} /> : null}
+          <ArchiveButton client={client} />
+        </div>
       </div>
       {contract ? null : <ContractWarning />}
       <div className="rounded-xl border border-border bg-card shadow-sm">

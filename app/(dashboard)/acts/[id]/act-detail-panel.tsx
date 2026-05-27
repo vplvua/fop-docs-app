@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-import {
-  refreshDubidocStatusAction,
-  regeneratePdfAction,
-  retryDubidocSendAction,
-  updateServiceDescriptionAction,
-} from "./act-actions";
+import { regeneratePdfAction, updateServiceDescriptionAction } from "./act-actions";
 import { getDownloadUrlAction } from "./download-action";
+import {
+  EdoStatusBanners,
+  MarkSignedButton,
+  RefreshStatusButton,
+  RetryDubidocButton,
+  UnmarkSignedButton,
+} from "./edo-controls";
 
 interface Props {
   actId: string;
@@ -152,102 +154,6 @@ function EditableDescription({ actId, serviceDescription, canEdit }: EditableDes
   );
 }
 
-function RetryDubidocButton({ actId }: { actId: string }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  const handleRetry = useCallback(async () => {
-    setLoading(true);
-    await retryDubidocSendAction(actId);
-    setLoading(false);
-    router.refresh();
-  }, [actId, router]);
-
-  return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={handleRetry}
-      className="rounded-lg border border-semantic-warning bg-card px-4 py-2 text-sm font-medium text-semantic-warning transition-colors hover:bg-semantic-warning/10 disabled:opacity-50"
-    >
-      {loading ? "Відправка…" : "Спробувати ще раз"}
-    </button>
-  );
-}
-
-function RefreshStatusButton({ actId }: { actId: string }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
-    await refreshDubidocStatusAction(actId);
-    setLoading(false);
-    router.refresh();
-  }, [actId, router]);
-
-  return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={handleRefresh}
-      className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-    >
-      {loading ? "Оновлення…" : "Оновити статус"}
-    </button>
-  );
-}
-
-function EdoStatusBanners({
-  status,
-  edoProvider,
-  edoStatus,
-  hasPdf,
-}: {
-  status: string;
-  edoProvider: string;
-  edoStatus: string | null;
-  hasPdf: boolean;
-}) {
-  if (edoProvider !== "dubidoc") return null;
-
-  if (status === "draft" && hasPdf) {
-    return (
-      <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning/5 px-4 py-3">
-        <p className="text-sm font-medium text-semantic-warning">Не відправлено в Дубідок</p>
-      </div>
-    );
-  }
-
-  if (status === "signed") {
-    return (
-      <div className="rounded-lg border border-semantic-success/30 bg-semantic-success/5 px-4 py-3">
-        <p className="text-sm font-medium text-semantic-success">Підписано</p>
-      </div>
-    );
-  }
-
-  if (edoStatus === "refused") {
-    return (
-      <div className="rounded-lg border border-semantic-error/30 bg-semantic-error/5 px-4 py-3">
-        <p className="text-sm font-medium text-semantic-error">Клієнт відмовився від підпису</p>
-      </div>
-    );
-  }
-
-  if (status === "sent_to_edo" && edoStatus && edoStatus !== "refused") {
-    return (
-      <div className="rounded-lg border border-border bg-muted/50 px-4 py-3">
-        <p className="text-sm text-muted-foreground">
-          Статус Дубідок: <span className="font-medium text-foreground">{edoStatus}</span>
-        </p>
-      </div>
-    );
-  }
-
-  return null;
-}
-
 export function ActDetailPanel({
   actId,
   status,
@@ -261,6 +167,8 @@ export function ActDetailPanel({
   const showRetry = status === "draft" && edoProvider === "dubidoc" && hasPdf;
   const showRefresh = status === "sent_to_edo" && edoProvider === "dubidoc";
   const showDubidocLink = edoProvider === "dubidoc" && edoDocId;
+  const showMarkSigned = edoProvider === "vchasno_external" && status === "draft";
+  const showUnmarkSigned = edoProvider === "vchasno_external" && status === "signed";
 
   return (
     <div className="space-y-4">
@@ -281,6 +189,8 @@ export function ActDetailPanel({
       <div className="flex flex-wrap gap-3">
         <DownloadButton actId={actId} hasPdf={hasPdf} />
         <RegenerateButton actId={actId} />
+        {showMarkSigned ? <MarkSignedButton actId={actId} /> : null}
+        {showUnmarkSigned ? <UnmarkSignedButton actId={actId} /> : null}
         {showRetry ? <RetryDubidocButton actId={actId} /> : null}
         {showRefresh ? <RefreshStatusButton actId={actId} /> : null}
         {showDubidocLink ? (

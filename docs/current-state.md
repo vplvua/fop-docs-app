@@ -1,27 +1,25 @@
 # Current State
 
-**Останнє оновлення:** 2026-05-26
+**Останнє оновлення:** 2026-05-27
 **Призначення:** snapshot фактичної готовності системи. Оновлюється у Definition-of-Done кожного capability slice ([`mvp-capability-plan.md § 6`](mvp-capability-plan.md)).
 
 ---
 
 ## Phase
 
-`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8 + S9 done)`
+`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8 + S9 + S10 + S11 done)`
 
 ## Last completed slice
 
-`S9. edo-dubidoc` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-26-add-edo-dubidoc/`; spec живе у `openspec/specs/edo-dubidoc/spec.md`.
+`S11. moeosbb-sync` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-27-add-moeosbb-sync/`; spec живе у `openspec/specs/moeosbb-sync/spec.md`.
 
 ## Next slice
 
-`S10. edo-vchasno-external` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-edo-vchasno-external`.
+`S12. queue (polish)` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-queue-polish`.
 
 ## Blockers
 
-Жодних поточних блокерів. Відкриті TBD-питання, які прояснюються до відкриття відповідного зрізу — у [`mvp-capability-plan.md § 7`](mvp-capability-plan.md):
-
-- `TBD-S11-1` — мережевий доступ з Vercel у приватний MySQL "Моє ОСББ" (стане блокером перед S11).
+Жодних поточних блокерів. `TBD-S11-1` (мережевий доступ до MySQL "Моє ОСББ") — вирішено: PHP sync endpoint на shared hosting з replica DB.
 
 ## Capability completion matrix
 
@@ -37,8 +35,8 @@
 | S7  | classification       | done        | —   | skipped                            |
 | S8  | acts                 | done        | —   | skipped                            |
 | S9  | edo-dubidoc          | done        | —   | skipped                            |
-| S10 | edo-vchasno-external | not started | —   | —                                  |
-| S11 | moeosbb-sync         | not started | —   | —                                  |
+| S10 | edo-vchasno-external | done        | —   | skipped                            |
+| S11 | moeosbb-sync         | done        | —   | skipped                            |
 | S12 | queue (polish)       | not started | —   | —                                  |
 | S13 | dashboard (polish)   | not started | —   | —                                  |
 
@@ -46,6 +44,8 @@
 
 ## Recent activity
 
+- `2026-05-27` — **S11 (moeosbb-sync) complete.** `lib/external-apis/moeosbb/` — HTTP client з retry/backoff (1s/5s/30s), `fetchMoeosbbClients` fetches PHP endpoint (`MOEOSBB_SYNC_URL`) з Bearer token auth; mapper `mapRemoteToClientFields` translates MySQL column names (`full_name→name`, `osbb_zkpo→legalId`, `legal_address→address`, `osbb_bank→bankName`, `osbb_rr→bankAccount`, `contract_email→email`); `runMoeosbbSync` orchestrator з Promise.allSettled — match by `moeosbb_user_id`, selective merge (6 полів synced, 4 protected: apartments_count, access_price_override, auto_act_disabled, edo_provider), update `last_sync_at`, `integration_health`. `shouldRunSync` — schedule checker (`first`/`last`/`manual`). TBD-S11-1 resolved: PHP sync gateway на shared hosting (Хостинг Україна) з daily mysqldump replica (`--where="status=1"`), MySQL порт закритий. Cron handler `app/api/cron/moeosbb-sync/route.ts` з CRON_SECRET guard + schedule check; registered в `vercel.ts` (`0 0 * * *`). Server actions: `triggerMoeosbbSyncAction` (dashboard), `syncSingleClientAction` (client card). UI: "Синхронізувати Моє ОСББ зараз" button на дашборді, "Синхронізувати" button на картці клієнта (conditional on `moeosbb_user_id`). MSW mock handler `tests/mocks/handlers/moeosbb.ts`. `.env.example` updated: `MOEOSBB_SYNC_URL` + `MOEOSBB_SYNC_TOKEN` замінюють `MOEOSBB_DB_URL`. 256/256 unit-тестів (19 нових: 3 test files для moeosbb). `npm run qa` — 6/6 green. PRD coverage: FR-SYNC-01..06, TC-INTEG-03. Spec archived до `openspec/specs/moeosbb-sync/spec.md`.
+- `2026-05-26` — **S10 (edo-vchasno-external) complete.** `lib/edo/vchasno-state.ts` — pure state-machine validator `validateVchasnoTransition` for `draft ↔ signed` transitions, `vchasno_external` provider only. Server actions `markActSignedAction` / `unmarkActSignedAction` in `app/(dashboard)/acts/[id]/act-actions.ts`. UI: `edo-controls.tsx` — `MarkSignedButton`, `UnmarkSignedButton`, extended `EdoStatusBanners` з Вчасно branches ("Очікує підпису у Вчасно" / "Підписано у Вчасно"), `RetryDubidocButton`, `RefreshStatusButton` extracted from `act-detail-panel.tsx`. Act detail panel wires buttons conditionally: mark when `vchasno_external && draft`, unmark when `vchasno_external && signed`. No new DB tables/migrations, no external API calls, no cron jobs. 240/240 unit-тестів (15 нових: vchasno state machine + action guards). `npm run qa` — 6/6 green. PRD coverage: FR-EDO-20..25, TC-INTEG-04. Spec archived до `openspec/specs/edo-vchasno-external/spec.md`.
 - `2026-05-26` — **S9 (edo-dubidoc) complete.** `lib/external-apis/dubidoc/` — HTTP client з retry/backoff (1s/5s/30s), 401 AuthError, 429 Retry-After; `createDocument` (POST /api/v1/documents з base64 PDF, inline participants, Premium fields) + `getDocumentStatus` (GET polling); mapper `actToCreateDocumentPayload` assembles request from act snapshots. `lib/edo/send-to-dubidoc.ts` — orchestrator: validates preconditions (status=draft, edo_provider=dubidoc, edo_doc_id IS NULL, pdf_file_url set), downloads PDF from Blob, sends to DubiDoc, updates act (status=sent_to_edo, edo_doc_id, sent_to_edo_at), integration_health. Auto-send hooked into `app/api/acts/[id]/pdf/route.ts` after successful PDF generation. `lib/edo/poll-dubidoc.ts` — polls all sent_to_edo acts via Promise.allSettled, maps DubiDoc responses (signed→signed, archived→deleted+payment.act_id=NULL, refused→edo_status only, other→edo_status). Cron handler `app/api/cron/dubidoc-poll/route.ts` з CRON_SECRET guard; registered в `vercel.ts` (`0 */6 * * *`). Server actions: `retryDubidocSendAction`, `refreshDubidocStatusAction`, `triggerDubidocPollAction`. UI: act detail page — "Перейти в Дубідок" link, "Оновити статус" button, "Спробувати ще раз" button, status banners (Не відправлено / Клієнт відмовився / Підписано / raw edo_status). Dashboard — "Опитати статуси Дубідок" button. MSW mock handler `tests/mocks/handlers/dubidoc.ts`. 225/225 unit-тестів (34 нових: 5 test files для edo). `npm run qa` — 6/6 green. PRD coverage: FR-EDO-01..12, FR-EDGE-01, TC-INTEG-02, TC-INTEG-13, NFR-PERF-04..06. Spec archived до `openspec/specs/edo-dubidoc/spec.md`.
 - `2026-05-25` — **S8 (acts) complete.** `lib/acts/numbering.ts` — `nextActNumber` з `SELECT ... FOR UPDATE` на acts по `(client_id, year, month)` + UNIQUE index як двошаровий захист. `lib/acts/generate-pdf.ts` — async trigger через internal fetch до `/api/acts/{id}/pdf`. `app/api/acts/[id]/pdf/route.ts` — React + Tailwind → headless Chromium (`@sparticuz/chromium`) → PDF buffer → Vercel Blob (private). `lib/blob/` — `uploadActPdf` / `getActPdfDownloadUrl`. Act creation integrated into classification pipeline (`run-classification.ts` → `triggerPdfGeneration`). UI: `/acts` (список з фільтрами status/period/client/service_type/edo_provider), `/acts/[id]` (snapshot panel з "Збережено на момент генерації", download PDF, regenerate PDF, editable service_description для draft/vchasno). Server actions: `regeneratePdfAction`, `updateServiceDescriptionAction`, `getDownloadUrlAction`. `npm run qa` — 6/6 green. PRD coverage: FR-ACT-01..10, NFR-PERF-03, TC-INTEG-05, TC-INTEG-12.
 - `2026-05-25` — **S7 (classification) complete.** `lib/classification/` — pure 8-step classification pipeline (parse-contract-numbers, match-client, detect-service-type, check-completeness, resolve-quantity, classify, act-stub) + DB orchestrator `run-classification.ts` з `SELECT ... FOR UPDATE` у websocket transaction (`dbPool`). `lib/db/schema/acts.ts` (таблиця `acts` з 20 полями, pgEnum `act_status`, UNIQUE `(client_id, act_date, number)`, FK RESTRICT до clients, FK до payments); міграція `0009_add_acts.sql` applied. FK `payments.act_id → acts.id ON DELETE SET NULL`. Classification auto-trigger після PrivatBank polling (`app/api/cron/privatbank-poll/route.ts` → `classifyInserted`). Server actions `classifyPaymentAction` / `skipPaymentAction`. UI: `ClassificationPanel` на `/payments/[id]` з кнопками "Класифікувати"/"Пропустити", reason-specific guidance для 8 reasons, act link для classified, badge для skipped. `scripts/seed-classification-test.mjs` — 6 тестових платежів для ручної перевірки. 176/176 unit-тестів (56 нових: 7 test files для classification). `npm run qa` — 6/6 green. PRD coverage: FR-CLASS-01..18, FR-EDGE-03. Spec archived до `openspec/specs/classification/spec.md`.
