@@ -20,7 +20,7 @@ async function attemptFetch(
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { token, "Content-Type": "application/json;charset=utf-8" },
     });
   } catch (err) {
     return handleRetry(url, token, attempt, err as Error);
