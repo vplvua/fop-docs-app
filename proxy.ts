@@ -58,6 +58,6 @@ export const config = {
      *  - /favicon.ico (browser auto-fetch)
      *  - /api/health (public liveness endpoint, NFR-AVAIL-06)
      */
-    "/((?!_next/static|_next/image|_next/data|favicon.ico|api/health).*)",
+    "/((?!_next/static|_next/image|_next/data|favicon.ico|api/health|api/cron).*)",
   ],
 };
