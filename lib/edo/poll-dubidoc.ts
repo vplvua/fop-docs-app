@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { payments } from "@/lib/db/schema/payments";
-import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 import { recordIntegrationError, recordIntegrationSuccess } from "@/lib/observability";
 
@@ -13,10 +13,24 @@ export interface PollResult {
   deleted: number;
   refused: number;
   unchanged: number;
+  reset: number;
   errors: number;
 }
 
-type StatusOutcome = "signed" | "deleted" | "refused" | "unchanged";
+type StatusOutcome = "signed" | "deleted" | "refused" | "unchanged" | "reset";
+
+async function resetActToDraft(actId: string): Promise<void> {
+  await db
+    .update(acts)
+    .set({
+      status: "draft",
+      edoDocId: null,
+      edoStatus: null,
+      sentToEdoAt: null,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(acts.id, actId));
+}
 
 async function applyStatusUpdate(
   actId: string,
@@ -77,6 +91,14 @@ async function pollSingleAct(act: {
     }
     return outcome;
   } catch (err) {
+    if (err instanceof DubiDocApiError && err.statusCode === 404) {
+      await resetActToDraft(act.id);
+      logger.info(
+        { event: "edo.act_reset", actId: act.id, edoDocId: act.edoDocId },
+        "DubiDoc document not found, act reset to draft",
+      );
+      return "reset";
+    }
     const message = err instanceof Error ? err.message : "Unknown";
     logger.error(
       { event: "edo.poll_error", actId: act.id, edoDocId: act.edoDocId, error: message },
@@ -93,6 +115,7 @@ function aggregateResults(outcomes: PromiseSettledResult<StatusOutcome | "error"
     deleted: 0,
     refused: 0,
     unchanged: 0,
+    reset: 0,
     errors: 0,
   };
 
@@ -114,7 +137,7 @@ export async function pollDubidocStatuses(): Promise<PollResult> {
     .where(and(eq(acts.status, "sent_to_edo"), eq(acts.edoProvider, "dubidoc")));
 
   if (pendingActs.length === 0) {
-    return { total: 0, signed: 0, deleted: 0, refused: 0, unchanged: 0, errors: 0 };
+    return { total: 0, signed: 0, deleted: 0, refused: 0, unchanged: 0, reset: 0, errors: 0 };
   }
 
   const outcomes = await Promise.allSettled(pendingActs.map(pollSingleAct));

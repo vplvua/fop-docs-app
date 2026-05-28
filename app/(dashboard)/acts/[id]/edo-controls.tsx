@@ -74,7 +74,7 @@ export function RetryDubidocButton({ actId }: { actId: string }) {
       onClick={handleRetry}
       className="rounded-lg border border-semantic-warning bg-card px-4 py-2 text-sm font-medium text-semantic-warning transition-colors hover:bg-semantic-warning/10 disabled:opacity-50"
     >
-      {loading ? "Відправка…" : "Спробувати ще раз"}
+      {loading ? "Відправка…" : "Надіслати в Дубідок"}
     </button>
   );
 }

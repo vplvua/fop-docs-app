@@ -17,16 +17,20 @@ vi.mock("@/lib/db", () => {
   return { db: chain };
 });
 
-vi.mock("@/lib/external-apis/dubidoc", () => ({
-  getDocumentStatus: vi.fn(),
-}));
+vi.mock("@/lib/external-apis/dubidoc", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/external-apis/dubidoc")>();
+  return {
+    ...actual,
+    getDocumentStatus: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/observability", () => ({
   recordIntegrationSuccess: vi.fn(),
   recordIntegrationError: vi.fn(),
 }));
 
-import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
 import { recordIntegrationSuccess, recordIntegrationError } from "@/lib/observability";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
 
@@ -89,6 +93,16 @@ describe("pollDubidocStatuses", () => {
     expect(result.errors).toBe(1);
     expect(result.total).toBe(1);
     expect(mockRecordError).toHaveBeenCalled();
+  });
+
+  it("resets act to draft when document deleted (404)", async () => {
+    mockQueryResult.rows = [{ id: "act-404", edoDocId: "doc-404", paymentId: "pay-404" }];
+    mockGetStatus.mockRejectedValueOnce(new DubiDocApiError(404, "DubiDoc API error: 404"));
+
+    const result = await pollDubidocStatuses();
+    expect(result.reset).toBe(1);
+    expect(result.errors).toBe(0);
+    expect(mockRecordSuccess).toHaveBeenCalledWith("dubidoc");
   });
 
   it("records integration success when some succeed", async () => {

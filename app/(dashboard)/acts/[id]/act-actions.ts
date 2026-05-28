@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { validateVchasnoTransition } from "@/lib/edo/vchasno-state";
-import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
 
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
   const [act] = await db
@@ -141,7 +141,20 @@ export async function refreshDubidocStatusAction(
     await db.update(acts).set(updates).where(eq(acts.id, actId));
 
     return { ok: true };
-  } catch {
+  } catch (err) {
+    if (err instanceof DubiDocApiError && err.statusCode === 404) {
+      await db
+        .update(acts)
+        .set({
+          status: "draft",
+          edoDocId: null,
+          edoStatus: null,
+          sentToEdoAt: null,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(acts.id, actId));
+      return { ok: true };
+    }
     return { ok: false, error: "Помилка оновлення статусу з Дубідок" };
   }
 }

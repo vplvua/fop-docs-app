@@ -113,6 +113,7 @@ describe("triggerDubidocPollAction", () => {
       deleted: 0,
       refused: 1,
       unchanged: 2,
+      reset: 0,
       errors: 0,
     });
     const result = await triggerDubidocPollAction();
