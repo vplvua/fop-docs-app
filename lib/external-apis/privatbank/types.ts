@@ -5,6 +5,7 @@ export interface PrivatBankTransaction {
   CCY: string;
   OSND: string;
   AUT_CNTR_NAM: string;
+  AUT_CNTR_CRF: string;
   AUT_CNTR_ACC: string;
   AUT_CNTR_MFO: string;
   AUT_CNTR_MFO_NAME?: string;

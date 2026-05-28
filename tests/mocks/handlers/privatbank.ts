@@ -12,6 +12,7 @@ const sampleTransaction: PrivatBankTransaction = {
   CCY: "UAH",
   OSND: "За надання доступу до сервісу Моє ОСББ, договір №556770. Без ПДВ",
   AUT_CNTR_NAM: "ОСББ «Приклад»",
+  AUT_CNTR_CRF: "38640873",
   AUT_CNTR_ACC: "UA123456789012345678901234567",
   AUT_CNTR_MFO: "305299",
   AUT_MY_ACC: "UA999888777666555444333222111",
