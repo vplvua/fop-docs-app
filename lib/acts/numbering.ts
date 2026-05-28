@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { acts } from "@/lib/db/schema/acts";
 
@@ -16,13 +16,13 @@ export function formatActNumber(month: number, existingCount: number): string {
 }
 
 export async function nextActNumber(tx: Tx, clientId: string, actDate: string): Promise<string> {
-  const [row] = await tx
-    .select({ count: sql<number>`count(*)::int` })
+  const rows = await tx
+    .select({ id: acts.id })
     .from(acts)
     .where(and(eq(acts.clientId, clientId), eq(acts.actDate, actDate)))
     .for("update");
 
-  const count = row?.count ?? 0;
+  const count = rows.length;
   const month = extractMonth(actDate);
   return formatActNumber(month, count);
 }
