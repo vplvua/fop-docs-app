@@ -45,7 +45,7 @@ async function writeClassifiedResult(
 ): Promise<string> {
   const [newAct] = await tx
     .insert(schema.acts)
-    .values({ ...result.actStub, pdfFileUrl: "generated" })
+    .values(result.actStub)
     .returning({ id: schema.acts.id });
 
   await tx

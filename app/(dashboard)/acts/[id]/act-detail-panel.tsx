@@ -18,12 +18,11 @@ interface Props {
   status: string;
   edoProvider: string;
   serviceDescription: string;
-  hasPdf: boolean;
   edoDocId: string | null;
   edoStatus: string | null;
 }
 
-function DownloadButton({ actId, hasPdf }: { actId: string; hasPdf: boolean }) {
+function DownloadButton({ actId }: { actId: string }) {
   const [loading, setLoading] = useState(false);
 
   const handleDownload = useCallback(async () => {
@@ -38,7 +37,7 @@ function DownloadButton({ actId, hasPdf }: { actId: string; hasPdf: boolean }) {
   return (
     <button
       type="button"
-      disabled={!hasPdf || loading}
+      disabled={loading}
       onClick={handleDownload}
       className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
     >
@@ -159,12 +158,11 @@ export function ActDetailPanel({
   status,
   edoProvider,
   serviceDescription,
-  hasPdf,
   edoDocId,
   edoStatus,
 }: Props) {
   const canEdit = status === "draft" || edoProvider === "vchasno_external";
-  const showRetry = status === "draft" && edoProvider === "dubidoc" && hasPdf;
+  const showRetry = status === "draft" && edoProvider === "dubidoc";
   const showRefresh = status === "sent_to_edo" && edoProvider === "dubidoc";
   const showDubidocLink = edoProvider === "dubidoc" && edoDocId;
   const showMarkSigned = edoProvider === "vchasno_external" && status === "draft";
@@ -172,12 +170,7 @@ export function ActDetailPanel({
 
   return (
     <div className="space-y-4">
-      <EdoStatusBanners
-        status={status}
-        edoProvider={edoProvider}
-        edoStatus={edoStatus}
-        hasPdf={hasPdf}
-      />
+      <EdoStatusBanners status={status} edoProvider={edoProvider} edoStatus={edoStatus} />
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground">Опис послуги:</span>
         <EditableDescription
@@ -187,7 +180,7 @@ export function ActDetailPanel({
         />
       </div>
       <div className="flex flex-wrap gap-3">
-        <DownloadButton actId={actId} hasPdf={hasPdf} />
+        <DownloadButton actId={actId} />
         <RegenerateButton actId={actId} />
         {showMarkSigned ? <MarkSignedButton actId={actId} /> : null}
         {showUnmarkSigned ? <UnmarkSignedButton actId={actId} /> : null}
@@ -204,7 +197,6 @@ export function ActDetailPanel({
           </a>
         ) : null}
       </div>
-      {hasPdf ? null : <p className="text-xs text-muted-foreground">PDF ще не згенеровано</p>}
     </div>
   );
 }

@@ -106,12 +106,10 @@ export function EdoStatusBanners({
   status,
   edoProvider,
   edoStatus,
-  hasPdf,
 }: {
   status: string;
   edoProvider: string;
   edoStatus: string | null;
-  hasPdf: boolean;
 }) {
   if (edoProvider === "vchasno_external") {
     if (status === "signed") {
@@ -121,7 +119,7 @@ export function EdoStatusBanners({
         </div>
       );
     }
-    if (status === "draft" && hasPdf) {
+    if (status === "draft") {
       return (
         <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning/5 px-4 py-3">
           <p className="text-sm font-medium text-semantic-warning">Очікує підпису у Вчасно</p>
@@ -133,7 +131,7 @@ export function EdoStatusBanners({
 
   if (edoProvider !== "dubidoc") return null;
 
-  if (status === "draft" && hasPdf) {
+  if (status === "draft") {
     return (
       <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning/5 px-4 py-3">
         <p className="text-sm font-medium text-semantic-warning">Не відправлено в Дубідок</p>

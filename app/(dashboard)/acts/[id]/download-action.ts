@@ -8,14 +8,9 @@ import { acts } from "@/lib/db/schema/acts";
 export async function getDownloadUrlAction(
   actId: string,
 ): Promise<{ ok: boolean; url?: string; error?: string }> {
-  const [act] = await db
-    .select({ pdfFileUrl: acts.pdfFileUrl })
-    .from(acts)
-    .where(eq(acts.id, actId))
-    .limit(1);
+  const [act] = await db.select({ id: acts.id }).from(acts).where(eq(acts.id, actId)).limit(1);
 
   if (!act) return { ok: false, error: "Акт не знайдено" };
-  if (!act.pdfFileUrl) return { ok: false, error: "PDF ще не згенеровано" };
 
   return { ok: true, url: `/api/acts/${actId}/pdf` };
 }
