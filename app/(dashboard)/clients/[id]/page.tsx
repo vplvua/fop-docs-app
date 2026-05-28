@@ -1,9 +1,11 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { acts } from "@/lib/db/schema/acts";
 import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
+import { payments } from "@/lib/db/schema/payments";
 
 import { ClientCard } from "./client-card";
 
@@ -28,5 +30,17 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const [client] = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
   if (!client) notFound();
   const [contract] = await db.select().from(contracts).where(eq(contracts.clientId, id)).limit(1);
-  return <ClientCard client={client} contract={contract ?? null} activeTab={tab ?? "info"} />;
+  const [clientPayments, clientActs] = await Promise.all([
+    db.select().from(payments).where(eq(payments.clientId, id)).orderBy(desc(payments.paymentDate)),
+    db.select().from(acts).where(eq(acts.clientId, id)).orderBy(desc(acts.actDate)),
+  ]);
+  return (
+    <ClientCard
+      client={client}
+      contract={contract ?? null}
+      payments={clientPayments}
+      acts={clientActs}
+      activeTab={tab ?? "info"}
+    />
+  );
 }

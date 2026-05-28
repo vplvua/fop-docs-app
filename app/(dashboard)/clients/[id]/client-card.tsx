@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 
+import type { acts } from "@/lib/db/schema/acts";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
+import type { payments } from "@/lib/db/schema/payments";
 
 import { activateClientAction, archiveClientAction } from "../actions";
 
 import { ClientInfoForm } from "./client-info-form";
+import { ClientActsTab, ClientPaymentsTab } from "./client-related";
 import { ClientSyncButton } from "./client-sync-button";
 import { ContractForm } from "./contract-form";
+
+type Payment = typeof payments.$inferSelect;
+type Act = typeof acts.$inferSelect;
 
 const TABS = [
   { key: "info", label: "Загальна інформація" },
@@ -59,10 +65,6 @@ function ArchiveButton({ client }: { client: Client }) {
   );
 }
 
-function StubTab({ message }: { message: string }) {
-  return <p className="py-12 text-center text-sm text-muted-foreground">{message}</p>;
-}
-
 function ContractWarning() {
   return (
     <div
@@ -78,18 +80,22 @@ function TabContent({
   tab,
   client,
   contract,
+  payments,
+  acts,
 }: {
   tab: string;
   client: Client;
   contract: Contract | null;
+  payments: Payment[];
+  acts: Act[];
 }) {
   switch (tab) {
     case "contract":
       return <ContractForm contract={contract} client={client} />;
     case "payments":
-      return <StubTab message="Платежі з'являться у Slice 6." />;
+      return <ClientPaymentsTab rows={payments} />;
     case "acts":
-      return <StubTab message="Акти з'являться у Slice 8." />;
+      return <ClientActsTab rows={acts} />;
     default:
       return <ClientInfoForm client={client} />;
   }
@@ -98,10 +104,14 @@ function TabContent({
 export function ClientCard({
   client,
   contract,
+  payments,
+  acts,
   activeTab,
 }: {
   client: Client;
   contract: Contract | null;
+  payments: Payment[];
+  acts: Act[];
   activeTab: string;
 }) {
   return (
@@ -117,7 +127,13 @@ export function ClientCard({
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <TabNav clientId={client.id} active={activeTab} />
         <div className="p-6">
-          <TabContent tab={activeTab} client={client} contract={contract} />
+          <TabContent
+            tab={activeTab}
+            client={client}
+            contract={contract}
+            payments={payments}
+            acts={acts}
+          />
         </div>
       </div>
     </div>
