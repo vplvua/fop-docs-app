@@ -38,6 +38,7 @@ const samplePayload: CreateDocumentRequest = {
 describe("createDocument", () => {
   beforeEach(() => {
     vi.stubEnv("DUBIDOC_TOKEN", "test-token");
+    vi.stubEnv("DUBIDOC_ORGANIZATION_ID", "test-org");
   });
 
   afterEach(() => {
@@ -83,6 +84,7 @@ describe("createDocument", () => {
 describe("getDocumentStatus", () => {
   beforeEach(() => {
     vi.stubEnv("DUBIDOC_TOKEN", "test-token");
+    vi.stubEnv("DUBIDOC_ORGANIZATION_ID", "test-org");
   });
 
   afterEach(() => {

@@ -10,10 +10,16 @@ import type {
 const RETRY_DELAYS = [1000, 5000, 30000];
 const API_BASE = "https://api.dubidoc.com.ua/api/v1";
 
-function getToken(): string {
+function getAuthHeaders(): Record<string, string> {
   const token = process.env.DUBIDOC_TOKEN;
   if (!token) throw new DubiDocAuthError("DUBIDOC_TOKEN is not configured");
-  return token;
+  const organization = process.env.DUBIDOC_ORGANIZATION_ID;
+  if (!organization) throw new DubiDocAuthError("DUBIDOC_ORGANIZATION_ID is not configured");
+  return {
+    "X-Access-Token": token,
+    "X-Organization": organization,
+    "Content-Type": "application/json",
+  };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -87,12 +93,11 @@ async function retryOrThrow<T>(
 export async function createDocument(
   payload: CreateDocumentRequest,
 ): Promise<CreateDocumentResponse> {
-  const token = getToken();
   return attemptRequest<CreateDocumentResponse>(
     `${API_BASE}/documents`,
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     },
     "createDocument",
@@ -101,12 +106,11 @@ export async function createDocument(
 }
 
 export async function getDocumentStatus(docId: string): Promise<DocumentStatusResponse> {
-  const token = getToken();
   return attemptRequest<DocumentStatusResponse>(
     `${API_BASE}/documents/${docId}`,
     {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
     },
     "getDocumentStatus",
     0,
