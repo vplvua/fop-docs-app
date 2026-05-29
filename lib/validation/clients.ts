@@ -9,21 +9,32 @@ const emailSchema = z.string().min(1, "Введіть email").email("Невір�
 
 const edoProviderSchema = z.enum(["dubidoc", "vchasno_external"]).optional();
 
-const apartmentsCountSchema = z.coerce
-  .number()
-  .int("Має бути цілим числом")
-  .min(1, "Мінімум 1")
+// An empty string means the user cleared a manual field — coerce it to null so the
+// field is wiped, while an absent field (undefined) is left untouched by the action.
+const emptyToNull = (v: unknown) => (v === "" ? null : v);
+
+const apartmentsCountSchema = z
+  .preprocess(
+    emptyToNull,
+    z.coerce.number().int("Має бути цілим числом").min(1, "Мінімум 1").nullable(),
+  )
   .optional();
 
 const accessPriceOverrideSchema = z
-  .string()
-  .regex(/^\d+(\.\d{1,2})?$/, "Формат: 123 або 123.45")
+  .preprocess(
+    emptyToNull,
+    z
+      .string()
+      .regex(/^\d+(\.\d{1,2})?$/, "Формат: 123 або 123.45")
+      .nullable(),
+  )
   .optional();
 
-const moeosbbUserIdSchema = z.coerce
-  .number()
-  .int("Має бути цілим числом")
-  .min(1, "Мінімум 1")
+const moeosbbUserIdSchema = z
+  .preprocess(
+    emptyToNull,
+    z.coerce.number().int("Має бути цілим числом").min(1, "Мінімум 1").nullable(),
+  )
   .optional();
 
 export const createClientSchema = z.object({

@@ -60,6 +60,24 @@ describe("createClientSchema", () => {
     expect(r.success).toBe(false);
   });
 
+  it("coerces an empty accessPriceOverride to null (cleared field)", () => {
+    const r = createClientSchema.safeParse({ ...valid, accessPriceOverride: "" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.accessPriceOverride).toBeNull();
+  });
+
+  it("coerces an empty apartmentsCount to null (cleared field)", () => {
+    const r = createClientSchema.safeParse({ ...valid, apartmentsCount: "" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.apartmentsCount).toBeNull();
+  });
+
+  it("coerces an empty moeosbbUserId to null (cleared field)", () => {
+    const r = createClientSchema.safeParse({ ...valid, moeosbbUserId: "" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.moeosbbUserId).toBeNull();
+  });
+
   it("accepts valid edoProvider", () => {
     expect(
       createClientSchema.safeParse({ ...valid, edoProvider: "vchasno_external" }).success,
@@ -106,5 +124,18 @@ describe("updateClientSchema", () => {
       legalId: "123",
     });
     expect(r.success).toBe(false);
+  });
+
+  it("accepts an empty accessPriceOverride alongside other edited fields", () => {
+    const r = updateClientSchema.safeParse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      apartmentsCount: "139",
+      accessPriceOverride: "",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.apartmentsCount).toBe(139);
+      expect(r.data.accessPriceOverride).toBeNull();
+    }
   });
 });
