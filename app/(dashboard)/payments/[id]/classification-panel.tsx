@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+import { REASON_GUIDANCE, parseReason } from "@/lib/queue/reasons";
+
 import {
   classifyPaymentAction,
   linkPaymentClientAction,
@@ -15,28 +17,6 @@ export interface ClientCandidate {
   name: string;
   moeosbbUserId: number | null;
   contractNumber: string | null;
-}
-
-const REASON_GUIDANCE: Record<string, string> = {
-  no_match:
-    "Платіж не вдалося зіставити з жодним клієнтом. Створіть нового клієнта або перевірте ЄДРПОУ.",
-  multiple_contracts:
-    "У призначенні знайдено кілька номерів договорів. Виправте призначення або оберіть потрібний.",
-  multiple_clients_same_edrpou:
-    "Кілька активних клієнтів мають цей ЄДРПОУ. Оберіть, до якого привʼязати платіж.",
-  ambiguous_client: "Договір знайдено, але ЄДРПОУ платника не збігається з ЄДРПОУ клієнта.",
-  client_incomplete: "У клієнта відсутні обовʼязкові поля для генерації акту.",
-  amount_mismatch: "Сума платежу не ділиться на тариф без залишку.",
-  sms_quantity_mismatch:
-    "Не вдалося розпізнати кількість СМС або сума не відповідає кількості × ціна.",
-  auto_act_disabled: "Автогенерація актів вимкнена для цього клієнта.",
-  external_edo: "Клієнт використовує Вчасно — акт потрібно створити вручну.",
-};
-
-function parseReason(raw: string): { key: string; detail: string | null } {
-  const idx = raw.indexOf(":");
-  if (idx === -1) return { key: raw, detail: null };
-  return { key: raw.slice(0, idx), detail: raw.slice(idx + 1) };
 }
 
 function SkippedBadge() {

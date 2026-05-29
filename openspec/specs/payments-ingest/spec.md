@@ -3,7 +3,9 @@
 ## Purpose
 
 PrivatBank Автоклієнт API polling, payment storage, and payments UI. Cron-driven ingestion with idempotent inserts, retry/backoff error handling, and manual trigger. Covers FR-PAY-01..08, NFR-PERF-01, TC-INTEG-01, TC-INTEG-10.
+
 ## Requirements
+
 ### Requirement: Cron polls PrivatBank API on interval
 
 The system SHALL run a cron job (`0 * * * *`) that calls the PrivatBank Автоклієнт API to fetch incoming transactions. The request period SHALL be an overlapping window of `2 × Settings.privatbank_polling_interval_minutes` ending at the current time. Each transaction SHALL be inserted into the `payments` table with `status = received`.
@@ -124,4 +126,3 @@ The top-bar navigation SHALL include a "Платежі" link pointing to `/payme
 
 - **WHEN** the admin is logged in
 - **THEN** the top-bar SHALL show "Платежі" link between "Клієнти" and "Налаштування"
-

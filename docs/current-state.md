@@ -1,21 +1,21 @@
 # Current State
 
-**Останнє оновлення:** 2026-05-27
+**Останнє оновлення:** 2026-05-30
 **Призначення:** snapshot фактичної готовності системи. Оновлюється у Definition-of-Done кожного capability slice ([`mvp-capability-plan.md § 6`](mvp-capability-plan.md)).
 
 ---
 
 ## Phase
 
-`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8 + S9 + S10 + S11 done)`
+`Phase 0 — MVP (in progress: S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8 + S9 + S10 + S11 + S12 done)`
 
 ## Last completed slice
 
-`S11. moeosbb-sync` — merged direct to `main`; change archived до `openspec/changes/archive/2026-05-27-add-moeosbb-sync/`; spec живе у `openspec/specs/moeosbb-sync/spec.md`.
+`S12. queue (polish)` — код завершено, `npm run qa` 6/6 green. Залишилися human-gated кроки: manual smoke на Neon dev branch + demo recording ([`docs/qa/recordings/S12-queue.md`](qa/recordings/S12-queue.md)), `openspec archive add-queue-polish`.
 
 ## Next slice
 
-`S12. queue (polish)` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-queue-polish`.
+`S13. dashboard (polish)` (див. [`mvp-capability-plan.md § 5`](mvp-capability-plan.md)). Перед стартом — `/opsx:propose add-dashboard-polish`.
 
 ## Blockers
 
@@ -37,13 +37,14 @@
 | S9  | edo-dubidoc          | done        | —   | skipped                            |
 | S10 | edo-vchasno-external | done        | —   | skipped                            |
 | S11 | moeosbb-sync         | done        | —   | skipped                            |
-| S12 | queue (polish)       | not started | —   | —                                  |
+| S12 | queue (polish)       | done        | —   | S12-queue.md (smoke pending)       |
 | S13 | dashboard (polish)   | not started | —   | —                                  |
 
 Статуси: `not started` / `in progress` / `done` / `blocked`.
 
 ## Recent activity
 
+- `2026-05-30` — **S12 (queue polish) code complete.** Новий route-group `app/(queue)/` з власним layout (TopBar shell). `/queue` (RSC `page.tsx`) — дві вкладки **На апрув** (`awaiting_review`) / **Проблеми класифікації** (`in_queue`) через `?tab=` (default `awaiting_review`), групування за `classification_reason` з фіксованим actionability-порядком. Pure-хелпери `lib/queue/`: `reasons.ts` (винесено `parseReason` + `REASON_GUIDANCE` з `classification-panel.tsx` — єдине джерело copy, + `REASON_LABELS`/`reasonLabel`), `group.ts` (`groupByReason` + `REASON_ORDER`), `missing-fields.ts` (`computeMissingFields` делегує `checkCompleteness` → парність з класифікатором D-017, deep-link tab descriptor). Reason-картки (`queue-card.tsx`, `reason-bodies.tsx`, `client-selector.tsx`, `'use client'`): `no_match` (пошук через `searchClientsAction` + «Створити нового клієнта» з payer-prefill + link), `multiple_clients_same_edrpou` (селектор активних кандидатів), `client_incomplete` (missing-list з deep-links), `multiple_contracts` (radio), `amount_mismatch`/`sms_quantity_mismatch` (сума/тариф/поділ через `resolveAccessPrice`/`resolveSmsPrice`), `external_edo` (бейдж «Вчасно»), `ambiguous_client` legacy read-only. Усі дії реюзають існуючі server actions (`classifyPaymentAction`/`skipPaymentAction`/`linkPaymentClientAction`) + `router.refresh()`. Top-bar став async, додано «Черга» з лічильником `awaiting_review + in_queue`. **Без міграцій / cron / зовнішніх API.** 294/294 unit-тестів (18 нових: 3 test files для queue). `npm run qa` — 6/6 green (заодно виправлено pre-existing format drift у `openspec/specs/{classification,payments-ingest}/spec.md` — whitespace-only). PRD coverage: FR-QUEUE-01..10. Spec delta у `openspec/changes/add-queue-polish/specs/queue/spec.md` (12 ADDED requirements). Human-gated: manual smoke + demo recording, потім `openspec archive`.
 - `2026-05-27` — **S11 (moeosbb-sync) complete.** `lib/external-apis/moeosbb/` — HTTP client з retry/backoff (1s/5s/30s), `fetchMoeosbbClients` fetches PHP endpoint (`MOEOSBB_SYNC_URL`) з Bearer token auth; mapper `mapRemoteToClientFields` translates MySQL column names (`full_name→name`, `osbb_zkpo→legalId`, `legal_address→address`, `osbb_bank→bankName`, `osbb_rr→bankAccount`, `contract_email→email`); `runMoeosbbSync` orchestrator з Promise.allSettled — match by `moeosbb_user_id`, selective merge (6 полів synced, 4 protected: apartments_count, access_price_override, auto_act_disabled, edo_provider), update `last_sync_at`, `integration_health`. `shouldRunSync` — schedule checker (`first`/`last`/`manual`). TBD-S11-1 resolved: PHP sync gateway на shared hosting (Хостинг Україна) з daily mysqldump replica (`--where="status=1"`), MySQL порт закритий. Cron handler `app/api/cron/moeosbb-sync/route.ts` з CRON_SECRET guard + schedule check; registered в `vercel.ts` (`0 0 * * *`). Server actions: `triggerMoeosbbSyncAction` (dashboard), `syncSingleClientAction` (client card). UI: "Синхронізувати Моє ОСББ зараз" button на дашборді, "Синхронізувати" button на картці клієнта (conditional on `moeosbb_user_id`). MSW mock handler `tests/mocks/handlers/moeosbb.ts`. `.env.example` updated: `MOEOSBB_SYNC_URL` + `MOEOSBB_SYNC_TOKEN` замінюють `MOEOSBB_DB_URL`. 256/256 unit-тестів (19 нових: 3 test files для moeosbb). `npm run qa` — 6/6 green. PRD coverage: FR-SYNC-01..06, TC-INTEG-03. Spec archived до `openspec/specs/moeosbb-sync/spec.md`.
 - `2026-05-26` — **S10 (edo-vchasno-external) complete.** `lib/edo/vchasno-state.ts` — pure state-machine validator `validateVchasnoTransition` for `draft ↔ signed` transitions, `vchasno_external` provider only. Server actions `markActSignedAction` / `unmarkActSignedAction` in `app/(dashboard)/acts/[id]/act-actions.ts`. UI: `edo-controls.tsx` — `MarkSignedButton`, `UnmarkSignedButton`, extended `EdoStatusBanners` з Вчасно branches ("Очікує підпису у Вчасно" / "Підписано у Вчасно"), `RetryDubidocButton`, `RefreshStatusButton` extracted from `act-detail-panel.tsx`. Act detail panel wires buttons conditionally: mark when `vchasno_external && draft`, unmark when `vchasno_external && signed`. No new DB tables/migrations, no external API calls, no cron jobs. 240/240 unit-тестів (15 нових: vchasno state machine + action guards). `npm run qa` — 6/6 green. PRD coverage: FR-EDO-20..25, TC-INTEG-04. Spec archived до `openspec/specs/edo-vchasno-external/spec.md`.
 - `2026-05-26` — **S9 (edo-dubidoc) complete.** `lib/external-apis/dubidoc/` — HTTP client з retry/backoff (1s/5s/30s), 401 AuthError, 429 Retry-After; `createDocument` (POST /api/v1/documents з base64 PDF, inline participants, Premium fields) + `getDocumentStatus` (GET polling); mapper `actToCreateDocumentPayload` assembles request from act snapshots. `lib/edo/send-to-dubidoc.ts` — orchestrator: validates preconditions (status=draft, edo_provider=dubidoc, edo_doc_id IS NULL, pdf_file_url set), downloads PDF from Blob, sends to DubiDoc, updates act (status=sent_to_edo, edo_doc_id, sent_to_edo_at), integration_health. Auto-send hooked into `app/api/acts/[id]/pdf/route.ts` after successful PDF generation. `lib/edo/poll-dubidoc.ts` — polls all sent_to_edo acts via Promise.allSettled, maps DubiDoc responses (signed→signed, archived→deleted+payment.act_id=NULL, refused→edo_status only, other→edo_status). Cron handler `app/api/cron/dubidoc-poll/route.ts` з CRON_SECRET guard; registered в `vercel.ts` (`0 */6 * * *`). Server actions: `retryDubidocSendAction`, `refreshDubidocStatusAction`, `triggerDubidocPollAction`. UI: act detail page — "Перейти в Дубідок" link, "Оновити статус" button, "Спробувати ще раз" button, status banners (Не відправлено / Клієнт відмовився / Підписано / raw edo_status). Dashboard — "Опитати статуси Дубідок" button. MSW mock handler `tests/mocks/handlers/dubidoc.ts`. 225/225 unit-тестів (34 нових: 5 test files для edo). `npm run qa` — 6/6 green. PRD coverage: FR-EDO-01..12, FR-EDGE-01, TC-INTEG-02, TC-INTEG-13, NFR-PERF-04..06. Spec archived до `openspec/specs/edo-dubidoc/spec.md`.

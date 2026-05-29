@@ -3,7 +3,9 @@
 ## Purpose
 
 Payment classification pipeline — automatic and manual classification of bank payments to clients/contracts, 8 classification reasons with queue routing, act stub generation on success. Covers FR-CLASS-01..18, FR-EDGE-03.
+
 ## Requirements
+
 ### Requirement: Classification triggers on received payments and manual reclassify
 
 The system SHALL run classification on every payment with `status = received` immediately after ingest. The system SHALL also allow re-running classification on payments with `status = awaiting_review` or `status = in_queue` via a server action. Payments with `status = classified` SHALL NOT be reclassifiable (FR-CLASS-17).
@@ -341,4 +343,3 @@ Covers: FR-CLASS-07.
 
 - **WHEN** the admin attempts to link a client whose `legal_id` differs from `payment.payer_legal_id` (non-transit)
 - **THEN** the server action SHALL reject the request and SHALL NOT change the payment's client
-
