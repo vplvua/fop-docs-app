@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { triggerDubidocPollAction } from "./dashboard-actions";
 
 export function DubidocPollButton() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -19,10 +21,11 @@ export function DubidocPollButton() {
       setMessage(
         `Опитано ${String(total)} актів: ${String(signed)} підписано, ${String(deleted)} видалено, ${String(refused)} відмовлено, ${String(errors)} помилок`,
       );
+      router.refresh();
     } else {
       setMessage(res.error ?? "Помилка");
     }
-  }, []);
+  }, [router]);
 
   return (
     <div className="flex items-center gap-3">
