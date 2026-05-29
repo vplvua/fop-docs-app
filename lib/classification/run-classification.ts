@@ -95,7 +95,10 @@ async function writeQueueResult(
   );
 }
 
-export async function runClassification(paymentId: string): Promise<ClassificationResult> {
+export async function runClassification(
+  paymentId: string,
+  forcedClientId?: string,
+): Promise<ClassificationResult> {
   const [patterns, smsKeywords, transitEdrpouList] = await Promise.all([
     getContractPatterns(),
     getSmsKeywords(),
@@ -106,6 +109,13 @@ export async function runClassification(paymentId: string): Promise<Classificati
     const { payment, clientsWithContracts, allTariffs, allSmsPrices } =
       await fetchClassificationData(tx, paymentId);
 
+    const forcedClient = forcedClientId
+      ? clientsWithContracts.find((c) => c.id === forcedClientId)
+      : undefined;
+    if (forcedClientId && !forcedClient) {
+      throw new Error(`Client ${forcedClientId} not found`);
+    }
+
     const classResult = classify({
       payment,
       clients: clientsWithContracts,
@@ -115,6 +125,7 @@ export async function runClassification(paymentId: string): Promise<Classificati
       tariffs: allTariffs,
       smsPrices: allSmsPrices,
       existingActCount: 0,
+      ...(forcedClient ? { forcedClient } : {}),
     });
 
     if (classResult.status === "classified") {

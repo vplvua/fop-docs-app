@@ -7,6 +7,7 @@ import type { SmsPrice, Tariff } from "@/lib/db/schema/tariffs";
 export const CLASSIFICATION_REASONS = {
   no_match: "no_match",
   multiple_contracts: "multiple_contracts",
+  multiple_clients_same_edrpou: "multiple_clients_same_edrpou",
   ambiguous_client: "ambiguous_client",
   client_incomplete: "client_incomplete",
   auto_act_disabled: "auto_act_disabled",
@@ -84,4 +85,10 @@ export interface ClassificationInput {
   tariffs: Tariff[];
   smsPrices: SmsPrice[];
   existingActCount: number;
+  /**
+   * When set, matching is skipped and this client is used directly (manual
+   * link from the UI). The caller is responsible for validating that the
+   * client's EDRPOU matches the payer (see `linkPaymentClientAction`).
+   */
+  forcedClient?: Client & { contract: Contract | null };
 }

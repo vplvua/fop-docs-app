@@ -1,10 +1,12 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { clients } from "@/lib/db/schema/clients";
+import { contracts } from "@/lib/db/schema/contracts";
 import { payments } from "@/lib/db/schema/payments";
 
-import { ClassificationPanel } from "./classification-panel";
+import { ClassificationPanel, type ClientCandidate } from "./classification-panel";
 
 const STATUS_LABELS: Record<string, string> = {
   received: "Отримано",
@@ -29,10 +31,32 @@ export async function generateMetadata({ params }: Props) {
   return { title: `${title} · ФОП Документи` };
 }
 
+async function loadCandidates(classificationReason: string | null): Promise<ClientCandidate[]> {
+  if (!classificationReason?.startsWith("multiple_clients_same_edrpou:")) return [];
+  const ids = classificationReason
+    .slice("multiple_clients_same_edrpou:".length)
+    .split(",")
+    .filter(Boolean);
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      moeosbbUserId: clients.moeosbbUserId,
+      contractNumber: contracts.number,
+    })
+    .from(clients)
+    .leftJoin(contracts, eq(contracts.clientId, clients.id))
+    .where(inArray(clients.id, ids));
+  return rows;
+}
+
 export default async function PaymentPage({ params }: Props) {
   const { id } = await params;
   const [payment] = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
   if (!payment) notFound();
+
+  const candidates = await loadCandidates(payment.classificationReason);
 
   return (
     <div className="space-y-6">
@@ -58,6 +82,7 @@ export default async function PaymentPage({ params }: Props) {
         classificationReason={payment.classificationReason}
         actId={payment.actId}
         clientId={payment.clientId}
+        candidates={candidates}
       />
       <details className="rounded-xl border border-border bg-card shadow-sm">
         <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">

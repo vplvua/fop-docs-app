@@ -12,39 +12,51 @@ import type { ClassificationInput, ClassificationResult } from "./types";
 export function classify(input: ClassificationInput): ClassificationResult {
   const { payment, clients, patterns, smsKeywords, transitEdrpouList, tariffs, smsPrices } = input;
 
-  // Step 1: parse contract numbers from purpose
+  // Step 1: parse contract numbers from purpose (informational unless the
+  // contract is needed as a discriminator inside matchClient).
   const parsedContractNumbers = parseContractNumbers(payment.purpose, patterns);
 
-  // Step 2: multiple contracts check
-  if (parsedContractNumbers.length > 1) {
-    return {
-      status: "in_queue",
-      reason: `${CLASSIFICATION_REASONS.multiple_contracts}:${parsedContractNumbers.join(",")}`,
-      clientId: null,
-      serviceType: null,
+  // Step 2 + 3: identify the client. With a forced client (manual link) we skip
+  // matching; otherwise run EDRPOU-first matching. The multiple_contracts check
+  // lives inside matchClient now — it only fires when the contract number is
+  // actually used to discriminate between same-EDRPOU clients (D-027, D4).
+  let client: (typeof clients)[number];
+  if (input.forcedClient) {
+    client = input.forcedClient;
+  } else {
+    const matchResult = matchClient(
       parsedContractNumbers,
-    };
+      payment.payerLegalId,
+      clients,
+      transitEdrpouList,
+    );
+
+    if (matchResult.status === "in_queue") {
+      return {
+        status: "in_queue",
+        reason: matchResult.reason,
+        clientId: null,
+        serviceType: null,
+        parsedContractNumbers,
+      };
+    }
+
+    if (matchResult.status === "awaiting_review") {
+      const reason =
+        matchResult.candidateClientIds.length > 0
+          ? `${matchResult.reason}:${matchResult.candidateClientIds.join(",")}`
+          : matchResult.reason;
+      return {
+        status: "awaiting_review",
+        reason,
+        clientId: matchResult.clientId,
+        serviceType: null,
+        parsedContractNumbers,
+      };
+    }
+
+    client = matchResult.client;
   }
-
-  // Step 3: match client
-  const matchResult = matchClient(
-    parsedContractNumbers,
-    payment.payerLegalId,
-    clients,
-    transitEdrpouList,
-  );
-
-  if (matchResult.status === "in_queue") {
-    return {
-      status: "in_queue",
-      reason: matchResult.reason,
-      clientId: null,
-      serviceType: null,
-      parsedContractNumbers,
-    };
-  }
-
-  const client = matchResult.client;
 
   // Step 4: auto_act_disabled check
   if (client.autoActDisabled) {

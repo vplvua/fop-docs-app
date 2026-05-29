@@ -146,25 +146,24 @@ describe("classify — reason branches", () => {
     }
   });
 
-  it("returns multiple_contracts when >1 contract numbers found", () => {
+  it("ignores multiple contract numbers when EDRPOU resolves a single active client", () => {
     const p: PatternEntry[] = [{ pattern: "(\\d{6})", description: "any 6 digits" }];
     const input = makeInput({
       payment: makePayment({ purpose: "Договори 556770 та 556771" }),
       patterns: p,
     });
+    // Payer EDRPOU maps to exactly one active client → contract numbers are
+    // informational; classification proceeds instead of multiple_contracts.
     const result = classify(input);
-    expect(result.status).toBe("in_queue");
-    if (result.status === "in_queue") {
-      expect(result.reason).toContain("multiple_contracts");
-    }
+    expect(result.status).toBe("classified");
   });
 
-  it("returns ambiguous_client when contract matches but legal_id differs", () => {
+  it("returns no_match when the payer EDRPOU has no client", () => {
     const input = makeInput({ payment: makePayment({ payerLegalId: "99999999" }) });
     const result = classify(input);
     expect(result.status).toBe("in_queue");
     if (result.status === "in_queue") {
-      expect(result.reason).toBe("ambiguous_client");
+      expect(result.reason).toBe("no_match");
     }
   });
 
