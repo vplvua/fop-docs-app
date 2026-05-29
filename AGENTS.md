@@ -45,6 +45,10 @@ Before planning or implementing any substantive change, read:
 4. openspec/specs/<capability> — current accepted behavior
 5. docs/adr/ — accepted architecture decisions
 
+Before any deploy or DB migration, read [`docs/operations.md`](docs/operations.md) —
+dev vs production use **separate Neon branches**, so `npm run db:migrate` only touches
+dev; production must be migrated separately (recipe in the runbook).
+
 ## Architecture (hard import boundaries)
 
 - app/ MUST NOT import from app/api/internals/
