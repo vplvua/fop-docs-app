@@ -52,6 +52,6 @@ export async function getPollingIntervals(): Promise<{
   return {
     privatbankMinutes: pbMin ?? 60,
     dubidocHours: dubHrs ?? 6,
-    moeosbbSchedule: schedule ?? "first",
+    moeosbbSchedule: schedule ?? "daily",
   };
 }

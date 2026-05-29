@@ -71,6 +71,13 @@
       "when": 1779822000000,
       "tag": "0009_add_acts",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0010_moeosbb_daily_schedule",
+      "breakpoints": true
     }
   ]
 }

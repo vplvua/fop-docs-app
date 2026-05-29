@@ -10,7 +10,7 @@ export const config: VercelConfig = {
   crons: [
     { path: "/api/cron/privatbank-poll", schedule: "0 * * * *" },
     { path: "/api/cron/dubidoc-poll", schedule: "0 */6 * * *" },
-    { path: "/api/cron/moeosbb-sync", schedule: "0 0 * * *" },
+    { path: "/api/cron/moeosbb-sync", schedule: "0 4 * * *" },
   ],
 };
 

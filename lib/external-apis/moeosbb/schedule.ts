@@ -1,6 +1,8 @@
 export function shouldRunSync(schedule: string, today: Date): boolean {
   if (schedule === "manual") return false;
 
+  if (schedule === "daily") return true;
+
   const day = today.getDate();
 
   if (schedule === "first") return day === 1;

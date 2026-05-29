@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Read-only sync of client data from external "Моє ОСББ" system via PHP endpoint. Selective field merge (6 fields synced, 4 protected), schedule-based cron (first/last/manual), manual trigger, integration health tracking. Covers FR-SYNC-01..06, TC-INTEG-03.
+Read-only sync of client data from external "Моє ОСББ" system via PHP endpoint. Selective field merge (6 fields synced, 4 protected), schedule-based cron (daily/first/last/manual, default daily), manual trigger, integration health tracking. Covers FR-SYNC-01..06, TC-INTEG-03.
 
 ## Requirements
 
@@ -103,9 +103,14 @@ When `runMoeosbbSync` is called with `singleMoeosbbId`, auto-creation SHALL NOT 
 
 ### Requirement: Schedule-based cron execution
 
-A cron job SHALL fire daily (`0 0 * * *`). The handler SHALL read `Settings.moeosbb_sync_schedule` and execute sync only when the schedule condition is met: `"first"` — day 1 of the month; `"last"` — last day of the month; `"manual"` — never auto-execute.
+A cron job SHALL fire daily (`0 4 * * *`, after the 03:00 replica refresh). The handler SHALL read `Settings.moeosbb_sync_schedule` and execute sync only when the schedule condition is met: `"daily"` — every day; `"first"` — day 1 of the month; `"last"` — last day of the month; `"manual"` — never auto-execute. The default schedule SHALL be `"daily"`.
 
 Covers: FR-SYNC-03.
+
+#### Scenario: Daily schedule on any day
+
+- **WHEN** the cron fires on any calendar day and `moeosbb_sync_schedule = "daily"`
+- **THEN** the sync SHALL execute
 
 #### Scenario: First-of-month schedule on day 1
 
@@ -179,12 +184,12 @@ After a successful sync, `Client.last_sync_at` SHALL be set to `now()` for every
 
 ### Requirement: Cron registered in vercel.ts
 
-The MoeOSBB sync cron SHALL be registered in `vercel.ts` at path `/api/cron/moeosbb-sync` with schedule `0 0 * * *` (daily at midnight UTC).
+The MoeOSBB sync cron SHALL be registered in `vercel.ts` at path `/api/cron/moeosbb-sync` with schedule `0 4 * * *` (daily at 04:00 UTC, after the 03:00 hosting replica refresh).
 
 #### Scenario: Cron registered
 
 - **WHEN** `vercel.ts` is loaded
-- **THEN** the crons array SHALL include `{ path: "/api/cron/moeosbb-sync", schedule: "0 0 * * *" }`
+- **THEN** the crons array SHALL include `{ path: "/api/cron/moeosbb-sync", schedule: "0 4 * * *" }`
 
 ### Requirement: CRON_SECRET guard on cron handler
 

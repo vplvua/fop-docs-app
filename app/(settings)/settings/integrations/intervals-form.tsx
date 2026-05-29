@@ -68,6 +68,7 @@ export function IntervalsForm({
             aria-label="Розклад sync Моє ОСББ"
             className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
+            <option value="daily">Щодня</option>
             <option value="first">1-го числа місяця</option>
             <option value="last">Останній день місяця</option>
             <option value="manual">Тільки вручну</option>

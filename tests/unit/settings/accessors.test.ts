@@ -76,7 +76,7 @@ describe("settings accessors", () => {
     expect(result).toEqual({
       privatbankMinutes: 60,
       dubidocHours: 6,
-      moeosbbSchedule: "first",
+      moeosbbSchedule: "daily",
     });
   });
 });

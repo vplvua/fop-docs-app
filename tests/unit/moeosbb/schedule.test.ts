@@ -3,6 +3,20 @@ import { describe, expect, it } from "vitest";
 import { shouldRunSync } from "@/lib/external-apis/moeosbb/schedule";
 
 describe("shouldRunSync", () => {
+  describe("daily", () => {
+    it("returns true on day 1", () => {
+      expect(shouldRunSync("daily", new Date(2026, 0, 1))).toBe(true);
+    });
+
+    it("returns true on day 15", () => {
+      expect(shouldRunSync("daily", new Date(2026, 4, 15))).toBe(true);
+    });
+
+    it("returns true on the last day of the month", () => {
+      expect(shouldRunSync("daily", new Date(2026, 4, 31))).toBe(true);
+    });
+  });
+
   describe("first", () => {
     it("returns true on day 1", () => {
       expect(shouldRunSync("first", new Date(2026, 0, 1))).toBe(true);

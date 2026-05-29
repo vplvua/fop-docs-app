@@ -25,7 +25,7 @@ export async function updateIntervals(
     return { status: "error", message: "Інтервал ПриватБанку має бути ≥ 1" };
   if (Number.isNaN(dubHrs) || dubHrs < 1)
     return { status: "error", message: "Інтервал Дубідок має бути ≥ 1" };
-  if (!schedule || !["first", "last", "manual"].includes(schedule))
+  if (!schedule || !["daily", "first", "last", "manual"].includes(schedule))
     return { status: "error", message: "Невірний розклад sync" };
 
   await Promise.all([
