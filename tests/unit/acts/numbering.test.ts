@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { extractMonth, extractYear, formatActNumber } from "@/lib/acts/numbering";
+import {
+  extractMonth,
+  extractYear,
+  formatActNumber,
+  reformatActNumber,
+} from "@/lib/acts/numbering";
 
 describe("extractMonth", () => {
   it("returns 4 for April date", () => {
@@ -38,5 +43,26 @@ describe("formatActNumber", () => {
 
   it("does not pad a two-digit month", () => {
     expect(formatActNumber(12, 2026, 0)).toBe("12/2026");
+  });
+});
+
+describe("reformatActNumber", () => {
+  it("migrates legacy №M to MM/YYYY", () => {
+    expect(reformatActNumber("№5", "2026-05-31")).toBe("05/2026");
+    expect(reformatActNumber("№4", "2026-04-30")).toBe("04/2026");
+  });
+
+  it("migrates legacy №M/N preserving the ordinal", () => {
+    expect(reformatActNumber("№5/2", "2026-05-31")).toBe("05/2026/2");
+    expect(reformatActNumber("№5/3", "2026-05-31")).toBe("05/2026/3");
+  });
+
+  it("is idempotent for already-new numbers", () => {
+    expect(reformatActNumber("05/2026", "2026-05-31")).toBe("05/2026");
+    expect(reformatActNumber("05/2026/2", "2026-05-31")).toBe("05/2026/2");
+  });
+
+  it("returns unrecognised values unchanged", () => {
+    expect(reformatActNumber("weird-1", "2026-05-31")).toBe("weird-1");
   });
 });

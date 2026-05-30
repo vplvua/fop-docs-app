@@ -189,12 +189,17 @@ The system SHALL store a `fop_snapshot` (jsonb) on each act, populated from `fop
 
 ### Requirement: Existing acts can be regenerated to the new format
 
-The system SHALL provide a one-off, idempotent operation that re-renders every existing act through the new template, recomputing `service_description` from `service_type` (the current fixed wording), backfilling `fop_snapshot` where absent, and updating `pdf_file_url`. The description SHALL be recomputed for every act, overwriting any prior manual edits. The operation SHALL NOT re-submit documents to EDO; it SHALL only update the locally stored PDF.
+The system SHALL provide a one-off, idempotent operation that re-renders every existing act through the new template, recomputing `service_description` from `service_type` (the current fixed wording), reformatting `number` to the `MM/YYYY[/N]` format while preserving its per-client/month ordinal, backfilling `fop_snapshot` where absent, and updating `pdf_file_url`. The description SHALL be recomputed for every act, overwriting any prior manual edits. The operation SHALL NOT re-submit documents to EDO; it SHALL only update the locally stored PDF.
 
-#### Scenario: Backfill, recompute description, and re-render
+#### Scenario: Reformat number, recompute description, backfill, and re-render
 
-- **WHEN** the mass-regeneration operation runs over an act with `service_type = access` whose stored `service_description` is the legacy `"Доступ до сервісу за період 1 міс."`
-- **THEN** the act's `service_description` SHALL become `Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)`, it SHALL receive a `fop_snapshot` from current requisites if absent, and a freshly rendered PDF with an updated `pdf_file_url`
+- **WHEN** the mass-regeneration operation runs over an act with `act_date = "2026-05-31"`, `number = "№5"`, `service_type = access`, and the legacy `service_description = "Доступ до сервісу за період 1 міс."`
+- **THEN** the act's `number` SHALL become `05/2026`, its `service_description` SHALL become `Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)`, it SHALL receive a `fop_snapshot` from current requisites if absent, and a freshly rendered PDF with an updated `pdf_file_url`
+
+#### Scenario: Legacy ordinal preserved
+
+- **WHEN** the operation runs over an act with `act_date = "2026-05-31"` and `number = "№5/2"`
+- **THEN** the act's `number` SHALL become `05/2026/2`
 
 #### Scenario: Re-run is safe
 

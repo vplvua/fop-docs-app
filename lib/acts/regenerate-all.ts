@@ -8,6 +8,7 @@ import { logger } from "@/lib/logging";
 import { getFopRequisites, type FopRequisites } from "@/lib/requisites";
 
 import { generateAndStoreActPdf } from "./generate-pdf";
+import { reformatActNumber } from "./numbering";
 
 export interface RegenerateAllResult {
   total: number;
@@ -18,23 +19,27 @@ export interface RegenerateAllResult {
 
 interface ActRow {
   id: string;
+  number: string;
+  actDate: string;
   serviceType: string;
   fopSnapshot: unknown;
 }
 
 /**
- * Recompute the service description from `service_type`, backfill `fop_snapshot`
- * if absent, then re-render. Returns whether the snapshot was backfilled.
- * The description is rewritten for every act (overwriting any manual edits) so
- * existing acts adopt the current fixed wording.
+ * Recompute the service description from `service_type`, reformat the act number
+ * to `MM/YYYY[/N]`, backfill `fop_snapshot` if absent, then re-render. Returns
+ * whether the snapshot was backfilled. The description is rewritten for every
+ * act (overwriting any manual edits) so existing acts adopt the current wording.
  */
 async function regenerateOne(row: ActRow, requisites: FopRequisites | null): Promise<boolean> {
   const update: {
     serviceDescription: string;
+    number: string;
     updatedAt: ReturnType<typeof sql>;
     fopSnapshot?: FopRequisites;
   } = {
     serviceDescription: buildServiceDescription(row.serviceType as ServiceType),
+    number: reformatActNumber(row.number, row.actDate),
     updatedAt: sql`now()`,
   };
 
@@ -61,7 +66,13 @@ async function regenerateOne(row: ActRow, requisites: FopRequisites | null): Pro
 export async function regenerateAllActs(): Promise<RegenerateAllResult> {
   const requisites = await getFopRequisites();
   const rows = await db
-    .select({ id: acts.id, serviceType: acts.serviceType, fopSnapshot: acts.fopSnapshot })
+    .select({
+      id: acts.id,
+      number: acts.number,
+      actDate: acts.actDate,
+      serviceType: acts.serviceType,
+      fopSnapshot: acts.fopSnapshot,
+    })
     .from(acts);
 
   const outcomes = await Promise.allSettled(rows.map((row) => regenerateOne(row, requisites)));
