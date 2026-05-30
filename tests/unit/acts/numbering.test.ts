@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractMonth, formatActNumber } from "@/lib/acts/numbering";
+import { extractMonth, extractYear, formatActNumber } from "@/lib/acts/numbering";
 
 describe("extractMonth", () => {
   it("returns 4 for April date", () => {
@@ -16,20 +16,27 @@ describe("extractMonth", () => {
   });
 });
 
+describe("extractYear", () => {
+  it("returns the year from a YYYY-MM-DD string", () => {
+    expect(extractYear("2026-04-30")).toBe(2026);
+    expect(extractYear("2024-12-31")).toBe(2024);
+  });
+});
+
 describe("formatActNumber", () => {
-  it("returns №M for first act in month", () => {
-    expect(formatActNumber(4, 0)).toBe("№4");
+  it("returns MM/YYYY (zero-padded month) for the first act in a month", () => {
+    expect(formatActNumber(4, 2026, 0)).toBe("04/2026");
   });
 
-  it("returns №M/2 for second act", () => {
-    expect(formatActNumber(4, 1)).toBe("№4/2");
+  it("returns MM/YYYY/2 for the second act", () => {
+    expect(formatActNumber(4, 2026, 1)).toBe("04/2026/2");
   });
 
-  it("returns №M/3 for third act", () => {
-    expect(formatActNumber(4, 2)).toBe("№4/3");
+  it("returns MM/YYYY/3 for the third act", () => {
+    expect(formatActNumber(4, 2026, 2)).toBe("04/2026/3");
   });
 
-  it("handles month 12", () => {
-    expect(formatActNumber(12, 0)).toBe("№12");
+  it("does not pad a two-digit month", () => {
+    expect(formatActNumber(12, 2026, 0)).toBe("12/2026");
   });
 });

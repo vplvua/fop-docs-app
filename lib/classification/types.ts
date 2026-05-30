@@ -1,6 +1,7 @@
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
 import type { Payment } from "@/lib/db/schema/payments";
+import type { FopRequisites } from "@/lib/requisites/schema";
 import type { PatternEntry } from "@/lib/settings";
 import type { SmsPrice, Tariff } from "@/lib/db/schema/tariffs";
 
@@ -35,6 +36,9 @@ export interface ContractSnapshot {
   signedDate: string;
 }
 
+/** Executor requisites frozen onto the act at generation time (see D3). */
+export type FopSnapshot = FopRequisites;
+
 export interface ActStubData {
   clientId: string;
   paymentId: string;
@@ -46,6 +50,7 @@ export interface ActStubData {
   number: string;
   clientSnapshot: ClientSnapshot;
   contractSnapshot: ContractSnapshot;
+  fopSnapshot: FopSnapshot | null;
   serviceDescription: string;
   edoProvider: "dubidoc" | "vchasno_external";
 }

@@ -60,6 +60,7 @@ function makeAct(overrides = {}) {
       bankAccount: null,
     },
     contractSnapshot: { number: "100", signedDate: "2024-06-01" },
+    fopSnapshot: null,
     actDate: "2024-06-30",
     number: "1",
     serviceDescription: "Test service",

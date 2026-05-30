@@ -41,6 +41,7 @@
     "es2024": true,
     "builtin": true
   },
+  "ignorePatterns": ["lib/pdf/fonts/*.ts"],
   "overrides": [
     {
       "files": ["tests/**/*", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],

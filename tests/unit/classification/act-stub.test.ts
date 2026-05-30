@@ -33,25 +33,25 @@ describe("lastDayOfMonth", () => {
 });
 
 describe("generateActNumber", () => {
-  it("returns №M for first act in month", () => {
-    expect(generateActNumber(4, 0)).toBe("№4");
+  it("returns MM/YYYY for the first act in a month", () => {
+    expect(generateActNumber(4, 2026, 0)).toBe("04/2026");
   });
 
-  it("returns №M/N for subsequent acts", () => {
-    expect(generateActNumber(4, 1)).toBe("№4/2");
-    expect(generateActNumber(4, 2)).toBe("№4/3");
+  it("returns MM/YYYY/N for subsequent acts", () => {
+    expect(generateActNumber(4, 2026, 1)).toBe("04/2026/2");
+    expect(generateActNumber(4, 2026, 2)).toBe("04/2026/3");
   });
 });
 
 describe("buildServiceDescription", () => {
-  it("generates access description", () => {
-    expect(buildServiceDescription("access", "3", "міс.")).toBe(
-      "Доступ до сервісу за період 3 міс.",
+  it("returns the fixed access description (no embedded quantity)", () => {
+    expect(buildServiceDescription("access")).toBe(
+      'Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)',
     );
   });
 
-  it("generates sms description", () => {
-    expect(buildServiceDescription("sms", "100", "шт.")).toBe("СМС-розсилка 100 шт.");
+  it("returns the fixed sms description", () => {
+    expect(buildServiceDescription("sms")).toBe("Інтернет послуги (розсилка повідомлень)");
   });
 });
 

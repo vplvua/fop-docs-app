@@ -9,6 +9,7 @@ const SETTINGS_NAV = [
   { href: "/settings/sms-keywords", label: "Ключові слова СМС" },
   { href: "/settings/transit-edrpou", label: "Транзитні ЄДРПОУ" },
   { href: "/settings/integrations", label: "Інтеграції" },
+  { href: "/settings/requisites", label: "Реквізити" },
 ] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

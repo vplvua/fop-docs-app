@@ -10,6 +10,7 @@ import { getIntegrationHealth } from "@/lib/observability";
 import { DubidocPollButton } from "./dubidoc-poll-button";
 import { MoeosbbSyncButton } from "./moeosbb-sync-button";
 import { PrivatbankPollButton } from "./privatbank-poll-button";
+import { RegenerateActsButton } from "./regenerate-acts-button";
 
 export const metadata = { title: "Дашборд · ФОП Документи" };
 
@@ -72,6 +73,7 @@ export default async function DashboardPage() {
           <PrivatbankPollButton />
           <MoeosbbSyncButton />
           <DubidocPollButton />
+          <RegenerateActsButton />
         </div>
       </div>
     </section>

@@ -33,6 +33,8 @@ export const acts = pgTable(
     number: text("number").notNull(),
     clientSnapshot: jsonb("client_snapshot").notNull(),
     contractSnapshot: jsonb("contract_snapshot").notNull(),
+    // Nullable: backfilled for pre-existing acts during mass regeneration.
+    fopSnapshot: jsonb("fop_snapshot"),
     serviceDescription: text("service_description").notNull(),
     edoProvider: edoProviderEnum("edo_provider").notNull(),
     pdfFileUrl: text("pdf_file_url"),

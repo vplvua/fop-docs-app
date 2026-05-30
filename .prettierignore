@@ -21,3 +21,6 @@ openspec/changes/archive
 
 # Drizzle-kit generated artifacts (snapshots + journal).
 lib/db/migrations
+
+# Embedded base64 font modules (auto-generated, ~1MB single-line strings).
+lib/pdf/fonts

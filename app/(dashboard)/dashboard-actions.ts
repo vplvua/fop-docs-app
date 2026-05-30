@@ -1,5 +1,7 @@
 "use server";
 
+import type { RegenerateAllResult } from "@/lib/acts/regenerate-all";
+import { regenerateAllActs } from "@/lib/acts/regenerate-all";
 import type { PollResult } from "@/lib/edo/poll-dubidoc";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
 import type { SyncResult } from "@/lib/external-apis/moeosbb/sync";
@@ -28,5 +30,18 @@ export async function triggerMoeosbbSyncAction(): Promise<{
     return { ok: true, result };
   } catch {
     return { ok: false, error: "Помилка синхронізації з Моє ОСББ" };
+  }
+}
+
+export async function triggerRegenerateActsAction(): Promise<{
+  ok: boolean;
+  result?: RegenerateAllResult;
+  error?: string;
+}> {
+  try {
+    const result = await regenerateAllActs();
+    return { ok: true, result };
+  } catch {
+    return { ok: false, error: "Помилка перегенерації актів" };
   }
 }

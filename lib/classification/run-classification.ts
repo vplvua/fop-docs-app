@@ -4,6 +4,8 @@ import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
 import { nextActNumber } from "@/lib/acts/numbering";
 import { dbPool, schema } from "@/lib/db";
 import { logger } from "@/lib/logging";
+import type { FopRequisites } from "@/lib/requisites";
+import { getFopRequisites } from "@/lib/requisites";
 import { getContractPatterns, getSmsKeywords, getTransitEdrpouList } from "@/lib/settings";
 
 import { classify } from "./classify";
@@ -95,14 +97,31 @@ async function writeQueueResult(
   );
 }
 
+async function finalizeClassifiedAct(
+  tx: Tx,
+  paymentId: string,
+  classResult: Extract<ClassificationResult, { status: "classified" }>,
+  fopSnapshot: FopRequisites | null,
+): Promise<string> {
+  const actNumber = await nextActNumber(
+    tx,
+    classResult.actStub.clientId,
+    classResult.actStub.actDate,
+  );
+  classResult.actStub.number = actNumber;
+  classResult.actStub.fopSnapshot = fopSnapshot;
+  return writeClassifiedResult(tx, paymentId, classResult);
+}
+
 export async function runClassification(
   paymentId: string,
   forcedClientId?: string,
 ): Promise<ClassificationResult> {
-  const [patterns, smsKeywords, transitEdrpouList] = await Promise.all([
+  const [patterns, smsKeywords, transitEdrpouList, fopRequisites] = await Promise.all([
     getContractPatterns(),
     getSmsKeywords(),
     getTransitEdrpouList(),
+    getFopRequisites(),
   ]);
 
   const result = await dbPool.transaction(async (tx) => {
@@ -129,13 +148,7 @@ export async function runClassification(
     });
 
     if (classResult.status === "classified") {
-      const actNumber = await nextActNumber(
-        tx,
-        classResult.actStub.clientId,
-        classResult.actStub.actDate,
-      );
-      classResult.actStub.number = actNumber;
-      const actId = await writeClassifiedResult(tx, paymentId, classResult);
+      const actId = await finalizeClassifiedAct(tx, paymentId, classResult, fopRequisites);
       return { classResult, actId };
     }
 

@@ -24,6 +24,7 @@ function makeAct(overrides: Partial<Act> = {}): Act {
       email: "test@example.com",
     },
     contractSnapshot: { number: "556770", signedDate: "2025-01-01" },
+    fopSnapshot: null,
     serviceDescription: "Доступ до сервісу за період 3 міс.",
     edoProvider: "dubidoc",
     pdfFileUrl: "https://blob.vercel-storage.com/acts/act-001.pdf",
