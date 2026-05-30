@@ -1,4 +1,4 @@
-import { desc, eq, ilike, and } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
 import Link from "next/link";
 
 import {
@@ -7,17 +7,34 @@ import {
   DataTableEmpty,
   DataTableHead,
   DataTablePage,
+  Pagination,
   RowLink,
+  SortableHeader,
   Td,
   Th,
 } from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import type { ClientSnapshot } from "@/lib/classification/types";
+import {
+  clampPage,
+  offsetFor,
+  parseTableQuery,
+  type SortDir,
+} from "@/lib/data-tables/parse-table-query";
+import { actsTableQuery } from "@/lib/data-tables/configs";
 
 export const metadata = { title: "Акти · ФОП Документи" };
 
 export const ACTS_COLUMNS = ["Дата", "Номер", "Клієнт", "Послуга", "Сума", "ЕДО", "Статус"];
+
+// Allow-listed sort key → column. Mirrors `actsTableQuery.sortable`.
+const SORT_COLUMNS = {
+  actDate: acts.actDate,
+  number: acts.number,
+  amount: acts.amount,
+  serviceType: acts.serviceType,
+} as const;
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
@@ -40,11 +57,21 @@ const EDO_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  searchParams: Promise<{ status?: string; q?: string; service_type?: string; edo?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    service_type?: string;
+    edo?: string;
+    page?: string;
+    perPage?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }
 
 export default async function ActsPage({ searchParams }: Props) {
   const params = await searchParams;
+  const query = parseTableQuery(params, actsTableQuery);
   const conditions = [];
 
   if (params.status) {
@@ -59,13 +86,26 @@ export default async function ActsPage({ searchParams }: Props) {
   if (params.q) {
     conditions.push(ilike(acts.serviceDescription, `%${params.q}%`));
   }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const totalRows = await db.select({ value: count() }).from(acts).where(where);
+  const totalCount = totalRows[0]?.value ?? 0;
+  const page = clampPage(query.page, query.perPage, totalCount);
+
+  const sortColumn = SORT_COLUMNS[query.sort as keyof typeof SORT_COLUMNS] ?? acts.actDate;
+  const primary = query.dir === "asc" ? asc(sortColumn) : desc(sortColumn);
+  // Default sort is `act_date DESC, number`; add `number` as a secondary key
+  // when sorting by date, then `id` as a stable tiebreaker for pagination.
+  const orderArgs =
+    query.sort === "actDate" ? [primary, asc(acts.number), asc(acts.id)] : [primary, asc(acts.id)];
 
   const rows = await db
     .select()
     .from(acts)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(acts.actDate))
-    .limit(500);
+    .where(where)
+    .orderBy(...orderArgs)
+    .limit(query.perPage)
+    .offset(offsetFor(page, query.perPage));
 
   return (
     <DataTablePage
@@ -83,8 +123,13 @@ export default async function ActsPage({ searchParams }: Props) {
           <ActsToolbar params={params} />
         </>
       }
+      footer={
+        <>
+          <Pagination page={page} perPage={query.perPage} totalCount={totalCount} />
+        </>
+      }
     >
-      <ActsTable rows={rows} />
+      <ActsTable rows={rows} sort={query.sort} dir={query.dir} />
     </DataTablePage>
   );
 }
@@ -124,7 +169,15 @@ function ActsToolbar({ params }: { params: Record<string, string | undefined> })
   );
 }
 
-function ActsTable({ rows }: { rows: (typeof acts.$inferSelect)[] }) {
+function ActsTable({
+  rows,
+  sort,
+  dir,
+}: {
+  rows: (typeof acts.$inferSelect)[];
+  sort: string;
+  dir: SortDir;
+}) {
   if (rows.length === 0) {
     return <DataTableEmpty>Немає актів</DataTableEmpty>;
   }
@@ -133,9 +186,38 @@ function ActsTable({ rows }: { rows: (typeof acts.$inferSelect)[] }) {
     <DataTable>
       <DataTableHead>
         <tr>
-          {ACTS_COLUMNS.map((label) => (
-            <Th key={label}>{label}</Th>
-          ))}
+          <Th>
+            <SortableHeader
+              label="Дата"
+              sortKey="actDate"
+              currentSort={sort}
+              currentDir={dir}
+              defaultDir="desc"
+            />
+          </Th>
+          <Th>
+            <SortableHeader label="Номер" sortKey="number" currentSort={sort} currentDir={dir} />
+          </Th>
+          <Th>Клієнт</Th>
+          <Th>
+            <SortableHeader
+              label="Послуга"
+              sortKey="serviceType"
+              currentSort={sort}
+              currentDir={dir}
+            />
+          </Th>
+          <Th>
+            <SortableHeader
+              label="Сума"
+              sortKey="amount"
+              currentSort={sort}
+              currentDir={dir}
+              defaultDir="desc"
+            />
+          </Th>
+          <Th>ЕДО</Th>
+          <Th>Статус</Th>
         </tr>
       </DataTableHead>
       <DataTableBody>

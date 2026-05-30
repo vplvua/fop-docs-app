@@ -1,4 +1,4 @@
-import { desc, eq, ilike, or, and } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
 import Link from "next/link";
 
 import {
@@ -7,16 +7,32 @@ import {
   DataTableEmpty,
   DataTableHead,
   DataTablePage,
+  Pagination,
   RowLink,
+  SortableHeader,
   Td,
   Th,
 } from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema/payments";
+import {
+  clampPage,
+  offsetFor,
+  parseTableQuery,
+  type SortDir,
+} from "@/lib/data-tables/parse-table-query";
+import { paymentsTableQuery } from "@/lib/data-tables/configs";
 
 export const metadata = { title: "Платежі · ФОП Документи" };
 
 export const PAYMENTS_COLUMNS = ["Дата", "Сума", "Призначення", "Платник", "Статус"];
+
+// Allow-listed sort key → column. Mirrors `paymentsTableQuery.sortable`.
+const SORT_COLUMNS = {
+  paymentDate: payments.paymentDate,
+  amount: payments.amount,
+  payerName: payments.payerName,
+} as const;
 
 const STATUS_LABELS: Record<string, string> = {
   received: "Отримано",
@@ -36,11 +52,20 @@ const STATUS_BADGES: Record<string, string> = {
 };
 
 interface Props {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    page?: string;
+    perPage?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }
 
 export default async function PaymentsPage({ searchParams }: Props) {
-  const { status, q } = await searchParams;
+  const params = await searchParams;
+  const { status, q } = params;
+  const query = parseTableQuery(params, paymentsTableQuery);
 
   const conditions = [];
   if (status)
@@ -48,13 +73,22 @@ export default async function PaymentsPage({ searchParams }: Props) {
   if (q) {
     conditions.push(or(ilike(payments.purpose, `%${q}%`), ilike(payments.payerName, `%${q}%`)));
   }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const totalRows = await db.select({ value: count() }).from(payments).where(where);
+  const totalCount = totalRows[0]?.value ?? 0;
+  const page = clampPage(query.page, query.perPage, totalCount);
+
+  const sortColumn = SORT_COLUMNS[query.sort as keyof typeof SORT_COLUMNS] ?? payments.paymentDate;
+  const orderBy = query.dir === "asc" ? asc(sortColumn) : desc(sortColumn);
 
   const rows = await db
     .select()
     .from(payments)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(payments.paymentDate))
-    .limit(500);
+    .where(where)
+    .orderBy(orderBy, asc(payments.id))
+    .limit(query.perPage)
+    .offset(offsetFor(page, query.perPage));
 
   return (
     <DataTablePage
@@ -72,8 +106,13 @@ export default async function PaymentsPage({ searchParams }: Props) {
           <PaymentsToolbar currentStatus={status} currentSearch={q} />
         </>
       }
+      footer={
+        <>
+          <Pagination page={page} perPage={query.perPage} totalCount={totalCount} />
+        </>
+      }
     >
-      <PaymentsTable rows={rows} />
+      <PaymentsTable rows={rows} sort={query.sort} dir={query.dir} />
     </DataTablePage>
   );
 }
@@ -119,7 +158,15 @@ function PaymentsToolbar({
   );
 }
 
-function PaymentsTable({ rows }: { rows: (typeof payments.$inferSelect)[] }) {
+function PaymentsTable({
+  rows,
+  sort,
+  dir,
+}: {
+  rows: (typeof payments.$inferSelect)[];
+  sort: string;
+  dir: SortDir;
+}) {
   if (rows.length === 0) {
     return <DataTableEmpty>Немає платежів</DataTableEmpty>;
   }
@@ -128,9 +175,34 @@ function PaymentsTable({ rows }: { rows: (typeof payments.$inferSelect)[] }) {
     <DataTable>
       <DataTableHead>
         <tr>
-          {PAYMENTS_COLUMNS.map((label) => (
-            <Th key={label}>{label}</Th>
-          ))}
+          <Th>
+            <SortableHeader
+              label="Дата"
+              sortKey="paymentDate"
+              currentSort={sort}
+              currentDir={dir}
+              defaultDir="desc"
+            />
+          </Th>
+          <Th>
+            <SortableHeader
+              label="Сума"
+              sortKey="amount"
+              currentSort={sort}
+              currentDir={dir}
+              defaultDir="desc"
+            />
+          </Th>
+          <Th>Призначення</Th>
+          <Th>
+            <SortableHeader
+              label="Платник"
+              sortKey="payerName"
+              currentSort={sort}
+              currentDir={dir}
+            />
+          </Th>
+          <Th>Статус</Th>
         </tr>
       </DataTableHead>
       <DataTableBody>

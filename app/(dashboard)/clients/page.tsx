@@ -1,12 +1,23 @@
-import { and, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 import Link from "next/link";
 
-import { DataTablePage } from "@/app/components/data-table";
+import { DataTablePage, Pagination } from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
+import { clampPage, offsetFor, parseTableQuery } from "@/lib/data-tables/parse-table-query";
+import { clientsTableQuery } from "@/lib/data-tables/configs";
 
 import { ClientsTable } from "./clients-table";
 import { ClientsToolbar } from "./clients-toolbar";
+
+// Allow-listed sort key → column. Mirrors `clientsTableQuery.sortable`.
+const SORT_COLUMNS = {
+  name: clients.name,
+  legalId: clients.legalId,
+  apartmentsCount: clients.apartmentsCount,
+  moeosbbUserId: clients.moeosbbUserId,
+  createdAt: clients.createdAt,
+} as const;
 
 interface Props {
   searchParams: Promise<{
@@ -14,6 +25,10 @@ interface Props {
     status?: string;
     source?: string;
     edo?: string;
+    page?: string;
+    perPage?: string;
+    sort?: string;
+    dir?: string;
   }>;
 }
 
@@ -21,6 +36,7 @@ export const metadata = { title: "Клієнти · ФОП Документи" }
 
 export default async function ClientsPage({ searchParams }: Props) {
   const params = await searchParams;
+  const query = parseTableQuery(params, clientsTableQuery);
   const isArchive = params.status === "archive";
   const conditions = [eq(clients.autoActDisabled, isArchive)];
 
@@ -36,11 +52,25 @@ export default async function ClientsPage({ searchParams }: Props) {
     conditions.push(sql`(${ilike(clients.name, `%${q}%`)} OR ${ilike(clients.legalId, `${q}%`)})`);
   }
 
+  const where = and(...conditions);
+
+  const totalRows = await db.select({ value: count() }).from(clients).where(where);
+  const totalCount = totalRows[0]?.value ?? 0;
+  const page = clampPage(query.page, query.perPage, totalCount);
+
+  const sortColumn = SORT_COLUMNS[query.sort as keyof typeof SORT_COLUMNS] ?? clients.moeosbbUserId;
+  const direction = query.dir === "asc" ? sql`asc` : sql`desc`;
+  // NULLS LAST keeps local-only clients (no MoeOSBB id) at the bottom and is a
+  // no-op for the non-nullable columns; `id` is a stable pagination tiebreaker.
+  const orderArgs = [sql`${sortColumn} ${direction} nulls last`, asc(clients.id)];
+
   const rows = await db
     .select()
     .from(clients)
-    .where(and(...conditions))
-    .orderBy(clients.name);
+    .where(where)
+    .orderBy(...orderArgs)
+    .limit(query.perPage)
+    .offset(offsetFor(page, query.perPage));
 
   return (
     <DataTablePage
@@ -58,8 +88,13 @@ export default async function ClientsPage({ searchParams }: Props) {
           <ClientsToolbar params={params} />
         </>
       }
+      footer={
+        <>
+          <Pagination page={page} perPage={query.perPage} totalCount={totalCount} />
+        </>
+      }
     >
-      <ClientsTable rows={rows} />
+      <ClientsTable rows={rows} sort={query.sort} dir={query.dir} />
     </DataTablePage>
   );
 }

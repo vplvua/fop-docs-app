@@ -4,10 +4,12 @@ import {
   DataTableEmpty,
   DataTableHead,
   RowLink,
+  SortableHeader,
   Td,
   Th,
 } from "@/app/components/data-table";
 import type { Client } from "@/lib/db/schema/clients";
+import type { SortDir } from "@/lib/data-tables/parse-table-query";
 
 export const CLIENTS_COLUMNS = ["Назва", "ЄДРПОУ", "Квартири", "ЕДО", "MoeOSBB", "Створено"];
 
@@ -25,7 +27,7 @@ function EdoBadge({ provider }: { provider: string }) {
   );
 }
 
-export function ClientsTable({ rows }: { rows: Client[] }) {
+export function ClientsTable({ rows, sort, dir }: { rows: Client[]; sort: string; dir: SortDir }) {
   if (rows.length === 0) {
     return <DataTableEmpty>Клієнтів не знайдено.</DataTableEmpty>;
   }
@@ -34,9 +36,38 @@ export function ClientsTable({ rows }: { rows: Client[] }) {
     <DataTable>
       <DataTableHead>
         <tr>
-          {CLIENTS_COLUMNS.map((label) => (
-            <Th key={label}>{label}</Th>
-          ))}
+          <Th>
+            <SortableHeader label="Назва" sortKey="name" currentSort={sort} currentDir={dir} />
+          </Th>
+          <Th>
+            <SortableHeader label="ЄДРПОУ" sortKey="legalId" currentSort={sort} currentDir={dir} />
+          </Th>
+          <Th>
+            <SortableHeader
+              label="Квартири"
+              sortKey="apartmentsCount"
+              currentSort={sort}
+              currentDir={dir}
+            />
+          </Th>
+          <Th>ЕДО</Th>
+          <Th>
+            <SortableHeader
+              label="MoeOSBB"
+              sortKey="moeosbbUserId"
+              currentSort={sort}
+              currentDir={dir}
+            />
+          </Th>
+          <Th>
+            <SortableHeader
+              label="Створено"
+              sortKey="createdAt"
+              currentSort={sort}
+              currentDir={dir}
+              defaultDir="desc"
+            />
+          </Th>
         </tr>
       </DataTableHead>
       <DataTableBody>
