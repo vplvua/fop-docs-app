@@ -37,10 +37,36 @@ const successResponse: PrivatBankTransactionsResponse = {
   transactions: [sampleTransaction],
 };
 
+// A second confirmed transaction on the same day, used by by-date tests.
+const sampleTransactionTwo: PrivatBankTransaction = {
+  ...sampleTransaction,
+  SUM: "350.00",
+  SUM_E: "350.00",
+  OSND: "За надання доступу до сервісу Моє ОСББ, договір №112233. Без ПДВ",
+  AUT_CNTR_NAM: "ОСББ «Сонячне»",
+  AUT_CNTR_CRF: "40010203",
+  REF: "REF002",
+  REFN: "N002",
+  ID: "PB67890fghij",
+};
+
+const byDateResponse: PrivatBankTransactionsResponse = {
+  status: "SUCCESS",
+  type: "transactions",
+  exist_next_page: false,
+  next_page_id: null,
+  transactions: [sampleTransaction, sampleTransactionTwo],
+};
+
 export const privatbankHandlers = [
   http.get("https://acp.privatbank.ua/api/statements/transactions/interim", () =>
     HttpResponse.json(successResponse),
   ),
+  // Dated statement endpoint (by-date import). Registered separately from
+  // `/interim` so MSW matches the base path exactly.
+  http.get("https://acp.privatbank.ua/api/statements/transactions", () =>
+    HttpResponse.json(byDateResponse),
+  ),
 ];
 
-export { sampleTransaction };
+export { sampleTransaction, sampleTransactionTwo };

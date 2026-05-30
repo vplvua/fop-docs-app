@@ -21,6 +21,12 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "skipped",
 ]);
 
+// Payment provenance. `privatbank` covers both cron polling and on-demand
+// by-date statement import (same REF+REFN id space). `manual_external` is a
+// payment recorded by hand for money that never reached PrivatBank (other bank
+// or pre-launch) — see the add-manual-act capability.
+export const paymentSourceEnum = pgEnum("payment_source", ["privatbank", "manual_external"]);
+
 export const payments = pgTable(
   "payments",
   {
@@ -33,6 +39,9 @@ export const payments = pgTable(
     payerLegalId: text("payer_legal_id").notNull(),
     payerBankAccount: text("payer_bank_account"),
     rawData: jsonb("raw_data").notNull(),
+    source: paymentSourceEnum("source").notNull().default("privatbank"),
+    // Originating bank for non-PrivatBank payments; null for PrivatBank rows.
+    bankLabel: text("bank_label"),
     status: paymentStatusEnum("status").notNull().default("received"),
     classificationReason: text("classification_reason"),
     parsedContractNumbers: text("parsed_contract_numbers").array(),

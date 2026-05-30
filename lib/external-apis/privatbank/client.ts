@@ -4,7 +4,14 @@ import { PrivatBankApiError, PrivatBankAuthError } from "./types";
 import type { PrivatBankTransaction, PrivatBankTransactionsResponse } from "./types";
 
 const RETRY_DELAYS = [1000, 5000, 30000];
-const API_BASE = "https://acp.privatbank.ua/api/statements/transactions/interim";
+const API_INTERIM = "https://acp.privatbank.ua/api/statements/transactions/interim";
+const API_BY_DATE = "https://acp.privatbank.ua/api/statements/transactions";
+
+/** Convert a `YYYY-MM-DD` date to the PrivatBank `DD-MM-YYYY` statement format. */
+export function toApiDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}-${month}-${year}`;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -65,14 +72,22 @@ async function handleRetry(
   return attemptFetch(url, token, attempt + 1);
 }
 
+/** Extra, page-invariant query params (e.g. statement date range). */
+type QueryParams = Record<string, string>;
+
 async function fetchPage(
+  baseUrl: string,
   token: string,
   account: string,
+  extraParams: QueryParams,
   followId: string | null,
 ): Promise<{ transactions: PrivatBankTransaction[]; nextPageId: string | null }> {
-  const url = new URL(API_BASE);
+  const url = new URL(baseUrl);
   url.searchParams.set("acc", account);
   url.searchParams.set("limit", "100");
+  for (const [key, value] of Object.entries(extraParams)) {
+    url.searchParams.set(key, value);
+  }
   if (followId) {
     url.searchParams.set("followId", followId);
   }
@@ -88,20 +103,41 @@ async function fetchPage(
 }
 
 async function fetchAllPages(
+  baseUrl: string,
   token: string,
   account: string,
+  extraParams: QueryParams,
   followId: string | null,
   accumulated: PrivatBankTransaction[],
 ): Promise<PrivatBankTransaction[]> {
-  const result = await fetchPage(token, account, followId);
+  const result = await fetchPage(baseUrl, token, account, extraParams, followId);
   const all = [...accumulated, ...result.transactions];
   if (!result.nextPageId) return all;
-  return fetchAllPages(token, account, result.nextPageId, all);
+  return fetchAllPages(baseUrl, token, account, extraParams, result.nextPageId, all);
 }
 
+/** Interim statement (lastday→today) — the source for cron polling. */
 export async function fetchTransactions(
   token: string,
   account: string,
 ): Promise<PrivatBankTransaction[]> {
-  return fetchAllPages(token, account, null, []);
+  return fetchAllPages(API_INTERIM, token, account, {}, null, []);
+}
+
+/**
+ * Dated statement for a known period. `startDate`/`endDate` are `YYYY-MM-DD`;
+ * `endDate` defaults to `startDate` for a single-day fetch. Reuses the same
+ * paging, retry/backoff, and confirmed-transaction filter as interim polling.
+ */
+export async function fetchTransactionsByDate(
+  token: string,
+  account: string,
+  startDate: string,
+  endDate?: string,
+): Promise<PrivatBankTransaction[]> {
+  const params: QueryParams = {
+    startDate: toApiDate(startDate),
+    endDate: toApiDate(endDate ?? startDate),
+  };
+  return fetchAllPages(API_BY_DATE, token, account, params, null, []);
 }

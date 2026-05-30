@@ -20,6 +20,8 @@ function makePayment(overrides: Partial<Payment> = {}): Payment {
     payerLegalId: "12345678",
     payerBankAccount: "UA1234",
     rawData: {},
+    source: "privatbank",
+    bankLabel: null,
     status: "received",
     classificationReason: null,
     parsedContractNumbers: null,

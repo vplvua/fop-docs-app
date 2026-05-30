@@ -48,6 +48,12 @@ export default async function PaymentsPage({ searchParams }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-heading-2 text-foreground">Платежі</h1>
+        <Link
+          href="/payments/import"
+          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          Завантажити за датою
+        </Link>
       </div>
       <PaymentsToolbar currentStatus={status} currentSearch={q} />
       <PaymentsTable rows={rows} />
