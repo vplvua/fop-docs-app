@@ -1,6 +1,7 @@
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
 import type { Payment } from "@/lib/db/schema/payments";
+import type { ServiceNames } from "@/lib/services";
 
 import type { ActStubData, ClientSnapshot, ContractSnapshot, ServiceType } from "./types";
 
@@ -29,12 +30,13 @@ export function generateActNumber(
 /** Quantity unit shown on every act — always pieces. */
 export const ACT_QUANTITY_UNIT = "шт.";
 
-/** Fixed service descriptions (no embedded quantity). */
-export function buildServiceDescription(serviceType: ServiceType): string {
-  if (serviceType === "access") {
-    return 'Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)';
-  }
-  return "Інтернет послуги (розсилка повідомлень)";
+/**
+ * The configured service-line description for the type (no embedded quantity).
+ * Names are passed in so this stays a pure function — call sites fetch them via
+ * `getServiceNames()` (which falls back to `SERVICE_NAME_DEFAULTS` when unset).
+ */
+export function buildServiceDescription(serviceType: ServiceType, names: ServiceNames): string {
+  return names[serviceType];
 }
 
 export function buildClientSnapshot(client: Client): ClientSnapshot {
@@ -63,10 +65,11 @@ interface BuildActStubInput {
   unitPrice: string;
   quantity: string;
   existingActCount: number;
+  serviceNames: ServiceNames;
 }
 
 export function buildActStub(input: BuildActStubInput): ActStubData {
-  const { client, contract, payment, serviceType, unitPrice, quantity } = input;
+  const { client, contract, payment, serviceType, unitPrice, quantity, serviceNames } = input;
 
   const actDate = lastDayOfMonth(payment.paymentDate);
   const [year, month] = actDate.split("-").map(Number) as [number, number];
@@ -85,7 +88,7 @@ export function buildActStub(input: BuildActStubInput): ActStubData {
     contractSnapshot: buildContractSnapshot(contract),
     // Filled from current requisites in run-classification (needs DB access).
     fopSnapshot: null,
-    serviceDescription: buildServiceDescription(serviceType),
+    serviceDescription: buildServiceDescription(serviceType, serviceNames),
     edoProvider: client.edoProvider,
   };
 }

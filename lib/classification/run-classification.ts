@@ -6,6 +6,7 @@ import { dbPool, schema } from "@/lib/db";
 import { logger } from "@/lib/logging";
 import type { FopRequisites } from "@/lib/requisites";
 import { getFopRequisites } from "@/lib/requisites";
+import { getServiceNames } from "@/lib/services";
 import { getContractPatterns, getSmsKeywords, getTransitEdrpouList } from "@/lib/settings";
 
 import { classify } from "./classify";
@@ -117,12 +118,15 @@ export async function runClassification(
   paymentId: string,
   forcedClientId?: string,
 ): Promise<ClassificationResult> {
-  const [patterns, smsKeywords, transitEdrpouList, fopRequisites] = await Promise.all([
-    getContractPatterns(),
-    getSmsKeywords(),
-    getTransitEdrpouList(),
-    getFopRequisites(),
-  ]);
+  const [patterns, smsKeywords, transitEdrpouList, fopRequisites, serviceNames] = await Promise.all(
+    [
+      getContractPatterns(),
+      getSmsKeywords(),
+      getTransitEdrpouList(),
+      getFopRequisites(),
+      getServiceNames(),
+    ],
+  );
 
   const result = await dbPool.transaction(async (tx) => {
     const { payment, clientsWithContracts, allTariffs, allSmsPrices } =
@@ -143,6 +147,7 @@ export async function runClassification(
       transitEdrpouList,
       tariffs: allTariffs,
       smsPrices: allSmsPrices,
+      serviceNames,
       existingActCount: 0,
       ...(forcedClient ? { forcedClient } : {}),
     });

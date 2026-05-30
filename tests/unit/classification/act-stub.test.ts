@@ -9,6 +9,7 @@ import {
 } from "@/lib/classification/act-stub";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
+import { SERVICE_NAME_DEFAULTS } from "@/lib/services/schema";
 
 describe("lastDayOfMonth", () => {
   it("returns 2026-04-30 for April", () => {
@@ -44,14 +45,23 @@ describe("generateActNumber", () => {
 });
 
 describe("buildServiceDescription", () => {
-  it("returns the fixed access description (no embedded quantity)", () => {
-    expect(buildServiceDescription("access")).toBe(
-      'Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)',
+  it("returns the passed access name", () => {
+    expect(buildServiceDescription("access", { access: "Доступ X", sms: "СМС Y" })).toBe(
+      "Доступ X",
     );
   });
 
-  it("returns the fixed sms description", () => {
-    expect(buildServiceDescription("sms")).toBe("Інтернет послуги (розсилка повідомлень)");
+  it("returns the passed sms name", () => {
+    expect(buildServiceDescription("sms", { access: "Доступ X", sms: "СМС Y" })).toBe("СМС Y");
+  });
+
+  it("returns the default wording when given the defaults", () => {
+    expect(buildServiceDescription("access", SERVICE_NAME_DEFAULTS)).toBe(
+      'Надання доступу до сервісу "Моє ОСББ" (один календарний місяць)',
+    );
+    expect(buildServiceDescription("sms", SERVICE_NAME_DEFAULTS)).toBe(
+      "Інтернет послуги (розсилка повідомлень)",
+    );
   });
 });
 

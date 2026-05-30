@@ -2,6 +2,7 @@ import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
 import type { Payment } from "@/lib/db/schema/payments";
 import type { FopRequisites } from "@/lib/requisites/schema";
+import type { ServiceNames } from "@/lib/services";
 import type { PatternEntry } from "@/lib/settings";
 import type { SmsPrice, Tariff } from "@/lib/db/schema/tariffs";
 
@@ -89,6 +90,7 @@ export interface ClassificationInput {
   transitEdrpouList: string[];
   tariffs: Tariff[];
   smsPrices: SmsPrice[];
+  serviceNames: ServiceNames;
   existingActCount: number;
   /**
    * When set, matching is skipped and this client is used directly (manual

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { classify } from "@/lib/classification/classify";
 import type { ClassificationInput } from "@/lib/classification/types";
+import { SERVICE_NAME_DEFAULTS } from "@/lib/services/schema";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
 import type { Payment } from "@/lib/db/schema/payments";
@@ -99,6 +100,7 @@ function makeInput(overrides: Partial<ClassificationInput> = {}): Classification
     transitEdrpouList: ["14360570"],
     tariffs: [catchAllTariff],
     smsPrices: [smsPrice],
+    serviceNames: SERVICE_NAME_DEFAULTS,
     existingActCount: 0,
     ...overrides,
   };

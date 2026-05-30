@@ -138,6 +138,7 @@ export function classify(input: ClassificationInput): ClassificationResult {
     unitPrice,
     quantity: qtyResult.quantity,
     existingActCount: input.existingActCount,
+    serviceNames: input.serviceNames,
   });
 
   return {

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { logger } from "@/lib/logging";
 import { getFopRequisites, type FopRequisites } from "@/lib/requisites";
+import { getServiceNames, type ServiceNames } from "@/lib/services";
 
 import { generateAndStoreActPdf } from "./generate-pdf";
 import { reformatActNumber } from "./numbering";
@@ -31,14 +32,18 @@ interface ActRow {
  * whether the snapshot was backfilled. The description is rewritten for every
  * act (overwriting any manual edits) so existing acts adopt the current wording.
  */
-async function regenerateOne(row: ActRow, requisites: FopRequisites | null): Promise<boolean> {
+async function regenerateOne(
+  row: ActRow,
+  requisites: FopRequisites | null,
+  serviceNames: ServiceNames,
+): Promise<boolean> {
   const update: {
     serviceDescription: string;
     number: string;
     updatedAt: ReturnType<typeof sql>;
     fopSnapshot?: FopRequisites;
   } = {
-    serviceDescription: buildServiceDescription(row.serviceType as ServiceType),
+    serviceDescription: buildServiceDescription(row.serviceType as ServiceType, serviceNames),
     number: reformatActNumber(row.number, row.actDate),
     updatedAt: sql`now()`,
   };
@@ -64,7 +69,7 @@ async function regenerateOne(row: ActRow, requisites: FopRequisites | null): Pro
  * locally stored PDF is refreshed. Safe to run repeatedly.
  */
 export async function regenerateAllActs(): Promise<RegenerateAllResult> {
-  const requisites = await getFopRequisites();
+  const [requisites, serviceNames] = await Promise.all([getFopRequisites(), getServiceNames()]);
   const rows = await db
     .select({
       id: acts.id,
@@ -75,7 +80,9 @@ export async function regenerateAllActs(): Promise<RegenerateAllResult> {
     })
     .from(acts);
 
-  const outcomes = await Promise.allSettled(rows.map((row) => regenerateOne(row, requisites)));
+  const outcomes = await Promise.allSettled(
+    rows.map((row) => regenerateOne(row, requisites, serviceNames)),
+  );
 
   const result: RegenerateAllResult = {
     total: rows.length,
