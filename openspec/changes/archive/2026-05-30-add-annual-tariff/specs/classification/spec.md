@@ -63,6 +63,21 @@ Covers: FR-CLASS-16, FR-ACT-01, FR-ACT-02, FR-ACT-03.
 - **WHEN** the act's `act_date` is in April 2026 and it is the first act for the client that month
 - **THEN** the act's `number` SHALL be `04/2026`
 
+#### Scenario: Service description uses the configured name
+
+- **WHEN** `service_type = access`, `quantity = 12`, and `service_names.access = "Доступ до сервісу Моє ОСББ"`
+- **THEN** `service_description` SHALL be `Доступ до сервісу Моє ОСББ`, `quantity_unit` SHALL be `шт.`, and the quantity SHALL render as the integer `12`
+
+#### Scenario: Service description falls back to default wording
+
+- **WHEN** `service_type = sms`, `quantity = 250`, and no `service_names` value is configured
+- **THEN** `service_description` SHALL be the default `Інтернет послуги (розсилка повідомлень)`, `quantity_unit` SHALL be `шт.`, and the quantity SHALL render as the integer `250`
+
+#### Scenario: Act numbering is race-safe
+
+- **WHEN** two classifications create acts for the same client in the same month simultaneously
+- **THEN** both acts SHALL have distinct numbers (serialized via `FOR UPDATE`)
+
 ### Requirement: Acts table schema
 
 The system SHALL create an `acts` table with: `id` (uuid PK), `client_id` (FK RESTRICT to clients), `payment_id` (uuid, FK to payments), `status` (enum: draft, sent_to_edo, signed, deleted), `service_type` (text), `unit_price` (numeric), `quantity` (numeric), `quantity_unit` (text), `amount` (numeric, NOT NULL — the actual payment total), `billing_period` (enum: monthly, annual; NOT NULL, default monthly), `act_date` (date), `number` (text), `client_snapshot` (jsonb), `contract_snapshot` (jsonb), `service_description` (text), `edo_provider` (edo_provider enum), `pdf_file_url` (text, nullable), `edo_doc_id` (text, nullable), `edo_status` (text, nullable), `sent_to_edo_at` (timestamp, nullable), `created_at`, `updated_at`. UNIQUE constraint on `(client_id, act_date, number)`. `payments.act_id` SHALL have FK to `acts.id` with ON DELETE SET NULL. Existing rows SHALL be backfilled with `amount = unit_price × quantity` and `billing_period = monthly`.

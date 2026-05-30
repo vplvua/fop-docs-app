@@ -35,3 +35,13 @@ Covers: FR-ACT-07, TC-INTEG-05, NFR-PERF-03.
 
 - **WHEN** the act total is `200.00`
 - **THEN** the total line SHALL read `Загальна вартість робіт (послуг) без ПДВ 200.00 грн. (двісті гривень 00 коп.), ПДВ 0.00 грн.`
+
+#### Scenario: Executor block from snapshot, deviations applied
+
+- **WHEN** the act PDF is rendered
+- **THEN** the executor column SHALL show exactly one bank account, no postal address, and the client column SHALL omit phone and email
+
+#### Scenario: PDF warm render under 2 seconds
+
+- **WHEN** act PDF generation runs on a warm function instance
+- **THEN** PDF generation SHALL complete in under 2 seconds
