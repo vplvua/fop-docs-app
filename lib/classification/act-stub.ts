@@ -97,3 +97,47 @@ export function buildActStub(input: BuildActStubInput): ActStubData {
     edoProvider: client.edoProvider,
   };
 }
+
+interface BuildManualActStubInput {
+  client: Client;
+  contract: Contract;
+  paymentId: string;
+  serviceType: ServiceType;
+  unitPrice: string;
+  quantity: string;
+  /** Authoritative paid total, taken from admin input verbatim (D4) — never recomputed. */
+  amount: string;
+  /** Period-derived act date (last day of chosen month), decoupled from payment date (D3). */
+  actDate: string;
+  serviceNames: ServiceNames;
+}
+
+/**
+ * Act stub for a manually-created act. Unlike {@link buildActStub} it takes the
+ * `actDate` and `amount` directly from admin input rather than deriving them
+ * from the backing payment — the period is chosen explicitly and the amount is
+ * authoritative as entered. `number` is a placeholder; the caller assigns the
+ * race-safe value via `nextActNumber` inside the transaction, and `fopSnapshot`
+ * is set from current requisites (mirrors `buildActStub`'s contract).
+ */
+export function buildManualActStub(input: BuildManualActStubInput): ActStubData {
+  const { client, contract, serviceType, unitPrice, quantity, serviceNames } = input;
+
+  return {
+    clientId: client.id,
+    paymentId: input.paymentId,
+    serviceType,
+    unitPrice,
+    quantity,
+    quantityUnit: ACT_QUANTITY_UNIT,
+    amount: input.amount,
+    billingPeriod: "monthly",
+    actDate: input.actDate,
+    number: "",
+    clientSnapshot: buildClientSnapshot(client),
+    contractSnapshot: buildContractSnapshot(contract),
+    fopSnapshot: null,
+    serviceDescription: buildServiceDescription(serviceType, serviceNames),
+    edoProvider: client.edoProvider,
+  };
+}

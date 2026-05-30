@@ -57,7 +57,15 @@ export default async function ActsPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-heading-2 text-foreground">Акти</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-heading-2 text-foreground">Акти</h1>
+        <Link
+          href="/acts/new"
+          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          Створити вручну
+        </Link>
+      </div>
       <ActsToolbar params={params} />
       <ActsTable rows={rows} />
     </div>
