@@ -263,7 +263,7 @@
 ### 4.2 Безпека (`NFR-SEC-*`)
 
 - **NFR-SEC-01:** Усі credentials і ключі зберігаються лише в env, ніколи в БД, ніколи в коді. Управління через `vercel env` (preview / development / production окремо).
-- **NFR-SEC-02:** Обов'язкові env-змінні: `PRIVATBANK_TOKEN`, `DUBIDOC_TOKEN`, `MOEOSBB_DB_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Auto-provisioned: `POSTGRES_URL`, `BLOB_READ_WRITE_TOKEN`.
+- **NFR-SEC-02:** Обов'язкові env-змінні: `PRIVATBANK_TOKEN`, `FOP_BANK_ACCOUNT` (рахунок ФОПа, з якого PrivatBank API тягне виписку — параметр `acc`; **не** плутати з друкованим IBAN у реквізитах акту `fop_requisites.bankAccount`), `DUBIDOC_TOKEN`, `MOEOSBB_DB_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`. Auto-provisioned: `POSTGRES_URL`, `BLOB_READ_WRITE_TOKEN`.
 - **NFR-SEC-03:** Пароль зберігається тільки як argon2id хеш.
 - **NFR-SEC-04:** TLS обов'язковий у production (auto-провіжен Vercel).
 - **NFR-SEC-05:** MySQL "Моє ОСББ" доступний з окремим read-only користувачем (`GRANT SELECT` only).
