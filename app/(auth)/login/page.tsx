@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <section className="rounded-xl border border-border bg-card p-8 shadow-sm">
       <header className="mb-6 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Вхід</h1>
+        <h1 className="text-heading-2 text-foreground">Вхід</h1>
         <p className="mt-2 text-sm text-muted-foreground">Доступ лише для адміністратора.</p>
       </header>
       <LoginForm next={next} />

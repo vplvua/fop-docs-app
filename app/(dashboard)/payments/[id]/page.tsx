@@ -60,7 +60,7 @@ export default async function PaymentPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Платіж</h1>
+      <h1 className="text-heading-2 text-foreground">Платіж</h1>
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <dl className="grid gap-4 sm:grid-cols-2">
           <Field label="Дата" value={payment.paymentDate} />

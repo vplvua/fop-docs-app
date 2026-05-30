@@ -51,7 +51,7 @@ export function PatternCreateForm() {
         </div>
       </div>
       {state.status === "success" && state.message ? (
-        <p className="text-sm text-green-700">{state.message}</p>
+        <p className="text-sm text-success-deep">{state.message}</p>
       ) : null}
       {state.status === "error" && state.message ? (
         <p className="text-sm text-destructive">{state.message}</p>

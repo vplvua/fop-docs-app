@@ -73,7 +73,7 @@ function RegenerateButton({ actId }: { actId: string }) {
       >
         {loading ? "Генерація…" : "Перегенерувати PDF"}
       </button>
-      {error ? <p className="mt-1 text-xs text-semantic-error">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs text-destructive-deep">{error}</p> : null}
     </div>
   );
 }

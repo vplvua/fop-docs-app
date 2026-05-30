@@ -27,6 +27,13 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-deep: var(--success-deep);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-deep: var(--warning-deep);
+  --color-destructive-deep: var(--destructive-deep);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -49,30 +56,42 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Color tokens map to DESIGN.md colors.* (internal-admin subset). DESIGN.md hex
+     is the source of truth; literals are permitted here in the token layer only. */
+  --background: #ffffff; /* colors.canvas */
+  --foreground: #1a1a1a; /* colors.ink */
+  --card: #ffffff; /* colors.canvas */
+  --card-foreground: #1a1a1a; /* colors.ink */
+  --popover: #ffffff; /* colors.canvas */
+  --popover-foreground: #1a1a1a; /* colors.ink */
+  --primary: #5645d4; /* colors.primary (purple) */
+  --primary-foreground: #ffffff; /* colors.on-primary */
+  --secondary: #f6f5f4; /* colors.surface */
+  --secondary-foreground: #37352f; /* colors.charcoal */
+  --muted: #f6f5f4; /* colors.surface */
+  --muted-foreground: #787671; /* colors.steel */
+  --accent: #f6f5f4; /* colors.surface */
+  --accent-foreground: #1a1a1a; /* colors.ink */
+  --destructive: #e03131; /* colors.semantic-error */
+  --success: #1aae39; /* colors.semantic-success */
+  --success-foreground: #ffffff; /* colors.on-primary */
+  --warning: #dd5b00; /* colors.semantic-warning */
+  --warning-foreground: #ffffff; /* colors.on-primary */
+  /* Deep text tones for colored-text-on-tint (soft-tag badges, status text), like
+     DESIGN.md badge-tag-* (warning = colors.brand-orange-deep). The mid-tones above
+     fail WCAG AA as text on light tints; these clear AA (≥4.5:1) on a /12 tint. */
+  --success-deep: #0c6b28; /* deep green — 5.9:1 on bg-success/12 */
+  --warning-deep: #793400; /* colors.brand-orange-deep — 7.8:1 on bg-warning/12 */
+  --destructive-deep: #991b1b; /* deep red — 7.0:1 on bg-destructive/12 */
+  --border: #e5e3df; /* colors.hairline */
+  --input: #c8c4be; /* colors.hairline-strong */
+  --ring: #5645d4; /* colors.primary (focus ring) */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem; /* 12px: cards = rounded-lg (12px), buttons = rounded-md (~9.6px) — D-DS-05 */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -127,4 +146,14 @@
   html {
     @apply font-sans;
   }
+}
+
+/* DESIGN.md typography.heading-2 — the page-title tier (36px / 600 / 1.2 / -0.5px).
+   Use for top-level page <h1>s so titles share one tier instead of ad-hoc sizes. */
+@utility text-heading-2 {
+  font-family: var(--font-heading);
+  font-size: 2.25rem; /* 36px */
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.5px;
 }

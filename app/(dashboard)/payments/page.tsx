@@ -14,6 +14,15 @@ const STATUS_LABELS: Record<string, string> = {
   skipped: "Пропущено",
 };
 
+// Soft-tag treatment (tinted bg + deep text) per DESIGN.md badge-tag-* and D-DS-03.
+const STATUS_BADGES: Record<string, string> = {
+  received: "bg-muted text-muted-foreground",
+  classified: "bg-success/12 text-success-deep",
+  awaiting_review: "bg-warning/12 text-warning-deep",
+  in_queue: "bg-primary/12 text-primary",
+  skipped: "bg-muted text-muted-foreground",
+};
+
 interface Props {
   searchParams: Promise<{ status?: string; q?: string }>;
 }
@@ -38,7 +47,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Платежі</h1>
+        <h1 className="text-heading-2 text-foreground">Платежі</h1>
       </div>
       <PaymentsToolbar currentStatus={status} currentSearch={q} />
       <PaymentsTable rows={rows} />
@@ -69,7 +78,7 @@ function PaymentsToolbar({
       <div className="flex gap-1">
         <Link
           href="/payments"
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!currentStatus ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${!currentStatus ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"}`}
         >
           Усі
         </Link>
@@ -77,7 +86,7 @@ function PaymentsToolbar({
           <Link
             key={s}
             href={`/payments?status=${s}`}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${currentStatus === s ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${currentStatus === s ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"}`}
           >
             {STATUS_LABELS[s]}
           </Link>
@@ -118,7 +127,9 @@ function PaymentsTable({ rows }: { rows: (typeof payments.$inferSelect)[] }) {
               </td>
               <td className="px-4 py-3">{p.payerName}</td>
               <td className="px-4 py-3">
-                <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-xs font-medium">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[p.status] ?? "bg-muted text-muted-foreground"}`}
+                >
                   {STATUS_LABELS[p.status] ?? p.status}
                 </span>
               </td>

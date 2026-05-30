@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
   return (
     <section className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Дашборд</h1>
+      <h1 className="text-heading-2 text-foreground">Дашборд</h1>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {DASHBOARD_INTEGRATIONS.map((integration) => (
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
 }
 
 const BANNER_STYLES: Record<DerivedHealth["state"], string> = {
-  ok: "border-semantic-success/30 bg-semantic-success/5",
+  ok: "border-success/30 bg-success/5",
   error: "border-destructive/30 bg-destructive/10",
   unknown: "border-border bg-muted/30",
 };
@@ -91,8 +91,8 @@ const STATE_LABELS: Record<DerivedHealth["state"], string> = {
 };
 
 const STATE_COLORS: Record<DerivedHealth["state"], string> = {
-  ok: "text-semantic-success",
-  error: "text-destructive",
+  ok: "text-success-deep",
+  error: "text-destructive-deep",
   unknown: "text-muted-foreground",
 };
 
@@ -114,7 +114,7 @@ function HealthBanner({ name, health }: { name: string; health: DerivedHealth })
         Останній успіх: {fmt(health.lastSuccessAt)}
       </p>
       {health.state === "error" ? (
-        <p className="mt-1 text-xs text-destructive">
+        <p className="mt-1 text-xs text-destructive-deep">
           {health.lastErrorMessage ?? "Помилка"} · {fmt(health.lastErrorAt)}
         </p>
       ) : null}

@@ -34,7 +34,7 @@ function SaveButton({ label = "Зберегти" }: { label?: string }) {
 
 function SuccessAlert({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-green-300/50 bg-green-50 p-3 text-sm text-green-800 dark:border-green-700/50 dark:bg-green-950/30 dark:text-green-200">
+    <div className="rounded-md border border-success/30 bg-success/5 p-3 text-sm text-success-deep">
       {message}
     </div>
   );

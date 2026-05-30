@@ -29,18 +29,15 @@ function runTests(patterns: PatternEntry[], input: string): MatchResult[] {
 
 function MatchResultCard({ result }: { result: MatchResult }) {
   return (
-    <div className="rounded-md border border-green-300/50 bg-green-50 p-2 text-sm dark:border-green-700/50 dark:bg-green-950/30">
-      <p className="font-mono text-xs text-green-800 dark:text-green-200">
+    <div className="rounded-md border border-success/30 bg-success/5 p-2 text-sm">
+      <p className="font-mono text-xs text-success-deep">
         #{String(result.index + 1)}: {result.pattern}
       </p>
       {result.groups.length > 0 ? (
-        <p className="mt-1 text-green-700 dark:text-green-300">
+        <p className="mt-1 text-success-deep">
           Захоплені групи:{" "}
           {result.groups.map((g, gi) => (
-            <code
-              key={`group-${String(gi)}`}
-              className="mx-1 rounded bg-green-100 px-1 dark:bg-green-900"
-            >
+            <code key={`group-${String(gi)}`} className="mx-1 rounded bg-success/10 px-1">
               {g}
             </code>
           ))}

@@ -50,7 +50,7 @@ export default async function QueuePage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Черга</h1>
+      <h1 className="text-heading-2 text-foreground">Черга</h1>
       <QueueTabs activeTab={tab} />
       {groups.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
@@ -86,10 +86,10 @@ function QueueTabs({ activeTab }: { activeTab: TabKey }) {
         <Link
           key={t.key}
           href={`/queue?tab=${t.key}`}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
             activeTab === t.key
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:text-foreground"
           }`}
         >
           {t.label}

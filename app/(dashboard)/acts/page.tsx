@@ -14,6 +14,14 @@ const STATUS_LABELS: Record<string, string> = {
   deleted: "Видалено",
 };
 
+// Soft-tag treatment (tinted bg + deep text) per DESIGN.md badge-tag-* and D-DS-03.
+const STATUS_BADGES: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  sent_to_edo: "bg-warning/12 text-warning-deep",
+  signed: "bg-success/12 text-success-deep",
+  deleted: "bg-destructive/12 text-destructive-deep",
+};
+
 const EDO_LABELS: Record<string, string> = {
   dubidoc: "Дубідок",
   vchasno_external: "Вчасно",
@@ -49,7 +57,7 @@ export default async function ActsPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Акти</h1>
+      <h1 className="text-heading-2 text-foreground">Акти</h1>
       <ActsToolbar params={params} />
       <ActsTable rows={rows} />
     </div>
@@ -73,7 +81,7 @@ function ActsToolbar({ params }: { params: Record<string, string | undefined> })
       <div className="flex gap-1">
         <Link
           href="/acts"
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!params.status ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${!params.status ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"}`}
         >
           Усі
         </Link>
@@ -81,7 +89,7 @@ function ActsToolbar({ params }: { params: Record<string, string | undefined> })
           <Link
             key={s}
             href={`/acts?status=${s}`}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${params.status === s ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${params.status === s ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:text-foreground"}`}
           >
             {STATUS_LABELS[s]}
           </Link>
@@ -139,7 +147,9 @@ function ActRow({ act }: { act: typeof acts.$inferSelect }) {
       <td className="px-4 py-3">{total} грн</td>
       <td className="px-4 py-3">{EDO_LABELS[act.edoProvider] ?? act.edoProvider}</td>
       <td className="px-4 py-3">
-        <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-xs font-medium">
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[act.status] ?? "bg-muted text-muted-foreground"}`}
+        >
           {STATUS_LABELS[act.status] ?? act.status}
         </span>
       </td>

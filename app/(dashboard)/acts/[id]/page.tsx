@@ -14,6 +14,14 @@ const STATUS_LABELS: Record<string, string> = {
   deleted: "Видалено",
 };
 
+// Soft-tag treatment (tinted bg + deep text) per DESIGN.md badge-tag-* and D-DS-03.
+const STATUS_BADGES: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  sent_to_edo: "bg-warning/12 text-warning-deep",
+  signed: "bg-success/12 text-success-deep",
+  deleted: "bg-destructive/12 text-destructive-deep",
+};
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -60,8 +68,10 @@ export default async function ActPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Акт {act.number}</h1>
-        <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-xs font-medium">
+        <h1 className="text-heading-2 text-foreground">Акт {act.number}</h1>
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[act.status] ?? "bg-muted text-muted-foreground"}`}
+        >
           {STATUS_LABELS[act.status] ?? act.status}
         </span>
       </div>

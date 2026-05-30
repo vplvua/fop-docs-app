@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// DESIGN.md specifies Notion Sans with an Inter fallback chain (D-DS-04). Notion Sans
+// is proprietary; Inter is the sanctioned substitute and ships Cyrillic, fixing the
+// serif-fallback bug that Geist (no Cyrillic glyphs) caused on Ukrainian headings.
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin", "cyrillic"],
 });
 
@@ -26,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="uk"
-      className={cn("h-full antialiased", geistSans.variable, geistMono.variable, "font-sans")}
+      className={cn("h-full antialiased", inter.variable, geistMono.variable, "font-sans")}
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

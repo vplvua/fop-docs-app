@@ -2,12 +2,13 @@
 // scripts/qa-verify.mjs — bundle gate
 //
 // Runs the full static-verification ritual before archive / PR:
-//   1. lint        (oxlint)
-//   2. format:check(prettier)
-//   3. typecheck   (tsc --noEmit)
-//   4. test:run    (vitest run)
-//   5. build       (next build)
-//   6. openspec validate --strict
+//   1. lint         (oxlint)
+//   2. check:design (design-token compliance guard — D-DS-06)
+//   3. format:check (prettier)
+//   4. typecheck    (tsc --noEmit)
+//   5. test:run     (vitest run)
+//   6. build        (next build)
+//   7. openspec validate --strict
 //
 // Atomic: fails fast on the first non-zero exit. Used both locally
 // (Claude Code Stop hook, `npm run qa`) and in CI (ai-pr-check.yml).
@@ -17,6 +18,7 @@ import process from "node:process";
 
 const stages = [
   { name: "lint", cmd: "npm", args: ["run", "lint"] },
+  { name: "check:design", cmd: "npm", args: ["run", "check:design"] },
   { name: "format:check", cmd: "npm", args: ["run", "format:check"] },
   { name: "typecheck", cmd: "npm", args: ["run", "typecheck"] },
   { name: "test:run", cmd: "npm", args: ["run", "test:run"] },

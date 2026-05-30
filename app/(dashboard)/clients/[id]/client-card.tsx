@@ -69,7 +69,7 @@ function ContractWarning() {
   return (
     <div
       role="alert"
-      className="rounded-md border border-amber-300/50 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-200"
+      className="rounded-md border border-warning/30 bg-warning/5 p-3 text-sm text-warning-deep"
     >
       Без договору акти не генеруються.
     </div>
@@ -117,7 +117,7 @@ export function ClientCard({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
+        <h1 className="text-heading-2 text-foreground">{client.name}</h1>
         <div className="flex items-center gap-2">
           {client.moeosbbUserId ? <ClientSyncButton clientId={client.id} /> : null}
           <ArchiveButton client={client} />
