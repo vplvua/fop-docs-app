@@ -79,4 +79,18 @@ describe("settings accessors", () => {
       moeosbbSchedule: "daily",
     });
   });
+
+  it("getAnnualPaidMonths defaults to 10 when unset", async () => {
+    mockDb.select.mockReturnValue(makeChain([]));
+
+    const { getAnnualPaidMonths } = await import("@/lib/settings");
+    expect(await getAnnualPaidMonths()).toBe(10);
+  });
+
+  it("getAnnualPaidMonths returns the stored value", async () => {
+    mockDb.select.mockReturnValue(makeChain([{ value: 11 }]));
+
+    const { getAnnualPaidMonths } = await import("@/lib/settings");
+    expect(await getAnnualPaidMonths()).toBe(11);
+  });
 });

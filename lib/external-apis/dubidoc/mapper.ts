@@ -9,7 +9,10 @@ interface ActClientSnapshot {
 
 export function actToCreateDocumentPayload(act: Act, pdfBase64: string): CreateDocumentRequest {
   const snapshot = act.clientSnapshot as ActClientSnapshot;
-  const amount = Math.round(Number(act.unitPrice) * Number(act.quantity));
+  // DubiDoc expects `amount` in kopiykas (integer minor units) — sending
+  // hryvnias makes the displayed sum 100× too small. Source the real paid total
+  // from `act.amount`, not unit_price × quantity (they differ for annual acts).
+  const amount = Math.round(Number(act.amount) * 100);
 
   return {
     file: pdfBase64,

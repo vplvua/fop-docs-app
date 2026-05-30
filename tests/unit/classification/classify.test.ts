@@ -101,6 +101,7 @@ function makeInput(overrides: Partial<ClassificationInput> = {}): Classification
     tariffs: [catchAllTariff],
     smsPrices: [smsPrice],
     serviceNames: SERVICE_NAME_DEFAULTS,
+    annualPaidMonths: 10,
     existingActCount: 0,
     ...overrides,
   };
@@ -115,7 +116,41 @@ describe("classify — happy paths", () => {
       expect(result.unitPrice).toBe("200.00");
       expect(result.quantity).toBe("1");
       expect(result.quantityUnit).toBe("міс.");
+      expect(result.amount).toBe("200.00");
+      expect(result.billingPeriod).toBe("monthly");
+      expect(result.actStub.amount).toBe("200.00");
+      expect(result.actStub.billingPeriod).toBe("monthly");
       expect(result.actStub.actDate).toBe("2026-04-30");
+    }
+  });
+
+  it("classifies a one-shot yearly payment as a 12-month annual act", () => {
+    const result = classify(makeInput({ payment: makePayment({ amount: "2000.00" }) }));
+    expect(result.status).toBe("classified");
+    if (result.status === "classified") {
+      expect(result.quantity).toBe("12");
+      expect(result.billingPeriod).toBe("annual");
+      expect(result.unitPrice).toBe("200.00");
+      // The act's total is the paid amount, not unitPrice × quantity.
+      expect(result.amount).toBe("2000.00");
+      expect(result.actStub.amount).toBe("2000.00");
+      expect(result.actStub.billingPeriod).toBe("annual");
+    }
+  });
+
+  it("does not give override clients the annual discount (2000 → 10 monthly)", () => {
+    const client = makeClient({ accessPriceOverride: "200.00" });
+    const contract = makeContract(client.id);
+    const result = classify(
+      makeInput({
+        payment: makePayment({ amount: "2000.00" }),
+        clients: [Object.assign(client, { contract })],
+      }),
+    );
+    expect(result.status).toBe("classified");
+    if (result.status === "classified") {
+      expect(result.quantity).toBe("10");
+      expect(result.billingPeriod).toBe("monthly");
     }
   });
 

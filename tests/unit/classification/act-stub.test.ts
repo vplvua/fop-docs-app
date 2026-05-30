@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildActStub,
   buildClientSnapshot,
   buildContractSnapshot,
   buildServiceDescription,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/classification/act-stub";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
+import type { Payment } from "@/lib/db/schema/payments";
 import { SERVICE_NAME_DEFAULTS } from "@/lib/services/schema";
 
 describe("lastDayOfMonth", () => {
@@ -113,5 +115,40 @@ describe("buildContractSnapshot", () => {
       number: "556770",
       signedDate: "2024-01-01",
     });
+  });
+});
+
+describe("buildActStub", () => {
+  const client = { id: "c1", name: "ОСББ", legalId: "12345678" } as Client;
+  const contract = { number: "556770", signedDate: "2024-01-01" } as Contract;
+
+  function build(amount: string, billingPeriod: "monthly" | "annual", quantity: string) {
+    const payment = { id: "p1", paymentDate: "2026-04-05", amount } as Payment;
+    return buildActStub({
+      client,
+      contract,
+      payment,
+      serviceType: "access",
+      unitPrice: "200.00",
+      quantity,
+      billingPeriod,
+      existingActCount: 0,
+      serviceNames: SERVICE_NAME_DEFAULTS,
+    });
+  }
+
+  it("carries the paid amount and billing period; quantity unit is always шт.", () => {
+    const monthly = build("200.00", "monthly", "1");
+    expect(monthly.amount).toBe("200.00");
+    expect(monthly.billingPeriod).toBe("monthly");
+    expect(monthly.quantityUnit).toBe("шт.");
+  });
+
+  it("annual stub keeps the discounted paid amount with quantity 12", () => {
+    const annual = build("2000.00", "annual", "12");
+    expect(annual.amount).toBe("2000.00");
+    expect(annual.billingPeriod).toBe("annual");
+    expect(annual.quantity).toBe("12");
+    expect(annual.quantityUnit).toBe("шт.");
   });
 });

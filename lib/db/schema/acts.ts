@@ -16,6 +16,8 @@ import { edoProviderEnum } from "./clients";
 
 export const actStatusEnum = pgEnum("act_status", ["draft", "sent_to_edo", "signed", "deleted"]);
 
+export const billingPeriodEnum = pgEnum("billing_period", ["monthly", "annual"]);
+
 export const acts = pgTable(
   "acts",
   {
@@ -29,6 +31,10 @@ export const acts = pgTable(
     unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
     quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
     quantityUnit: text("quantity_unit").notNull(),
+    // Actual paid total — the act's authoritative sum (D3). For monthly acts it
+    // equals unit_price × quantity; for discounted annual acts it does not.
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    billingPeriod: billingPeriodEnum("billing_period").notNull().default("monthly"),
     actDate: date("act_date", { mode: "string" }).notNull(),
     number: text("number").notNull(),
     clientSnapshot: jsonb("client_snapshot").notNull(),

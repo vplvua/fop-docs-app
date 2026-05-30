@@ -28,6 +28,8 @@ const act: Act = {
   unitPrice: "200.00",
   quantity: "1",
   quantityUnit: "шт.",
+  amount: "200.00",
+  billingPeriod: "monthly",
   actDate: "2026-04-30",
   number: "04/2026",
   clientSnapshot: {
@@ -108,8 +110,12 @@ describe("ActTemplate", () => {
     expect(html).toContain("Код ЄДРПОУ: 45525794");
   });
 
-  it("renders quantity 12 as an integer", () => {
-    expect(render({ quantity: "12", unitPrice: "166.67" })).toContain("12 шт.");
+  it("renders an annual act as 12 шт. with the paid total (D3), not unitPrice × quantity", () => {
+    // 12 × 200 = 2400, but the act shows the discounted paid total 2000.00.
+    const html = render({ quantity: "12", unitPrice: "200.00", amount: "2000.00" });
+    expect(html).toContain("12 шт.");
+    expect(html).toContain("2000.00 грн.");
+    expect(html).toContain("дві тисячі гривень 00 коп.");
   });
 
   it("omits the client phone and email (intentional deviation from the sample)", () => {

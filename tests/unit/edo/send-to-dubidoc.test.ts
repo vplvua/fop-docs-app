@@ -67,6 +67,8 @@ function makeAct(overrides = {}) {
     unitPrice: "10.00",
     quantity: "5.00",
     quantityUnit: "шт.",
+    amount: "50.00",
+    billingPeriod: "monthly",
     ...overrides,
   };
 }

@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props) {
 function SnapshotPanel({ act }: { act: typeof acts.$inferSelect }) {
   const client = act.clientSnapshot as ClientSnapshot;
   const contract = act.contractSnapshot as ContractSnapshot;
-  const total = (Number(act.unitPrice) * Number(act.quantity)).toFixed(2);
+  const total = Number(act.amount).toFixed(2);
 
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-sm">

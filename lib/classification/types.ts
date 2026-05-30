@@ -47,6 +47,9 @@ export interface ActStubData {
   unitPrice: string;
   quantity: string;
   quantityUnit: string;
+  /** Actual paid total — the act's authoritative sum (D3), not `unitPrice × quantity`. */
+  amount: string;
+  billingPeriod: "monthly" | "annual";
   actDate: string;
   number: string;
   clientSnapshot: ClientSnapshot;
@@ -64,6 +67,8 @@ export type ClassificationResult =
       unitPrice: string;
       quantity: string;
       quantityUnit: string;
+      amount: string;
+      billingPeriod: "monthly" | "annual";
       parsedContractNumbers: string[];
       actStub: ActStubData;
     }
@@ -91,6 +96,8 @@ export interface ClassificationInput {
   tariffs: Tariff[];
   smsPrices: SmsPrice[];
   serviceNames: ServiceNames;
+  /** Monthly prices a yearly one-shot payment costs (annual discount, default 10). */
+  annualPaidMonths: number;
   existingActCount: number;
   /**
    * When set, matching is skipped and this client is used directly (manual

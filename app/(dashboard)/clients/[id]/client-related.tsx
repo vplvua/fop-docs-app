@@ -84,7 +84,7 @@ export function ClientActsTab({ rows }: { rows: (typeof acts.$inferSelect)[] }) 
                 </Link>
               </td>
               <td className="px-4 py-3">{a.actDate}</td>
-              <td className="px-4 py-3">{a.unitPrice}</td>
+              <td className="px-4 py-3">{Number(a.amount).toFixed(2)} грн</td>
               <td className="px-4 py-3">
                 <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-xs font-medium">
                   {ACT_STATUS_LABELS[a.status] ?? a.status}

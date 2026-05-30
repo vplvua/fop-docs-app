@@ -7,7 +7,12 @@ import { logger } from "@/lib/logging";
 import type { FopRequisites } from "@/lib/requisites";
 import { getFopRequisites } from "@/lib/requisites";
 import { getServiceNames } from "@/lib/services";
-import { getContractPatterns, getSmsKeywords, getTransitEdrpouList } from "@/lib/settings";
+import {
+  getAnnualPaidMonths,
+  getContractPatterns,
+  getSmsKeywords,
+  getTransitEdrpouList,
+} from "@/lib/settings";
 
 import { classify } from "./classify";
 import type { ClassificationResult } from "./types";
@@ -114,52 +119,77 @@ async function finalizeClassifiedAct(
   return writeClassifiedResult(tx, paymentId, classResult);
 }
 
-export async function runClassification(
-  paymentId: string,
-  forcedClientId?: string,
-): Promise<ClassificationResult> {
-  const [patterns, smsKeywords, transitEdrpouList, fopRequisites, serviceNames] = await Promise.all(
-    [
+async function loadClassificationSettings() {
+  const [patterns, smsKeywords, transitEdrpouList, fopRequisites, serviceNames, annualPaidMonths] =
+    await Promise.all([
       getContractPatterns(),
       getSmsKeywords(),
       getTransitEdrpouList(),
       getFopRequisites(),
       getServiceNames(),
-    ],
+      getAnnualPaidMonths(),
+    ]);
+  return {
+    patterns,
+    smsKeywords,
+    transitEdrpouList,
+    fopRequisites,
+    serviceNames,
+    annualPaidMonths,
+  };
+}
+
+type ClassificationSettings = Awaited<ReturnType<typeof loadClassificationSettings>>;
+
+async function classifyPaymentInTx(
+  tx: Tx,
+  paymentId: string,
+  forcedClientId: string | undefined,
+  settings: ClassificationSettings,
+) {
+  const { payment, clientsWithContracts, allTariffs, allSmsPrices } = await fetchClassificationData(
+    tx,
+    paymentId,
   );
 
-  const result = await dbPool.transaction(async (tx) => {
-    const { payment, clientsWithContracts, allTariffs, allSmsPrices } =
-      await fetchClassificationData(tx, paymentId);
+  const forcedClient = forcedClientId
+    ? clientsWithContracts.find((c) => c.id === forcedClientId)
+    : undefined;
+  if (forcedClientId && !forcedClient) {
+    throw new Error(`Client ${forcedClientId} not found`);
+  }
 
-    const forcedClient = forcedClientId
-      ? clientsWithContracts.find((c) => c.id === forcedClientId)
-      : undefined;
-    if (forcedClientId && !forcedClient) {
-      throw new Error(`Client ${forcedClientId} not found`);
-    }
-
-    const classResult = classify({
-      payment,
-      clients: clientsWithContracts,
-      patterns,
-      smsKeywords,
-      transitEdrpouList,
-      tariffs: allTariffs,
-      smsPrices: allSmsPrices,
-      serviceNames,
-      existingActCount: 0,
-      ...(forcedClient ? { forcedClient } : {}),
-    });
-
-    if (classResult.status === "classified") {
-      const actId = await finalizeClassifiedAct(tx, paymentId, classResult, fopRequisites);
-      return { classResult, actId };
-    }
-
-    await writeQueueResult(tx, paymentId, classResult);
-    return { classResult, actId: null };
+  const classResult = classify({
+    payment,
+    clients: clientsWithContracts,
+    patterns: settings.patterns,
+    smsKeywords: settings.smsKeywords,
+    transitEdrpouList: settings.transitEdrpouList,
+    tariffs: allTariffs,
+    smsPrices: allSmsPrices,
+    serviceNames: settings.serviceNames,
+    annualPaidMonths: settings.annualPaidMonths,
+    existingActCount: 0,
+    ...(forcedClient ? { forcedClient } : {}),
   });
+
+  if (classResult.status === "classified") {
+    const actId = await finalizeClassifiedAct(tx, paymentId, classResult, settings.fopRequisites);
+    return { classResult, actId };
+  }
+
+  await writeQueueResult(tx, paymentId, classResult);
+  return { classResult, actId: null };
+}
+
+export async function runClassification(
+  paymentId: string,
+  forcedClientId?: string,
+): Promise<ClassificationResult> {
+  const settings = await loadClassificationSettings();
+  const result = await dbPool.transaction((tx) =>
+    classifyPaymentInTx(tx, paymentId, forcedClientId, settings),
+  );
 
   if (result.actId) {
     generateAndStoreActPdf(result.actId).catch(() => {});

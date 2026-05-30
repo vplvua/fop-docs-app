@@ -39,6 +39,16 @@ export async function getTransitEdrpouList(): Promise<string[]> {
   return (await getSettingValue<string[]>("transit_edrpou_list")) ?? [];
 }
 
+/**
+ * Number of monthly prices a one-shot yearly prepayment costs (the annual
+ * discount). The annual price for any access tariff is `unit_price ×` this
+ * value. Defaults to 10 ("pay 10 months, get 12") when unset — no seed, so
+ * behaviour is unchanged until the admin configures it.
+ */
+export async function getAnnualPaidMonths(): Promise<number> {
+  return (await getSettingValue<number>("annual_paid_months")) ?? 10;
+}
+
 export async function getPollingIntervals(): Promise<{
   privatbankMinutes: number;
   dubidocHours: number;

@@ -12,6 +12,7 @@ export interface CreateDocumentRequest {
   title: string;
   date: string;
   number: string;
+  /** Total in kopiykas (integer minor units) — DubiDoc divides by 100 for display. */
   amount: number;
   signatureType: "external";
   workflowType: "sequential";

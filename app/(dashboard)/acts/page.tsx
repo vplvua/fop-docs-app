@@ -130,7 +130,7 @@ function ActsTable({ rows }: { rows: (typeof acts.$inferSelect)[] }) {
 
 function ActRow({ act }: { act: typeof acts.$inferSelect }) {
   const client = act.clientSnapshot as ClientSnapshot;
-  const total = (Number(act.unitPrice) * Number(act.quantity)).toFixed(2);
+  const total = Number(act.amount).toFixed(2);
 
   return (
     <tr className="border-b border-border last:border-0">

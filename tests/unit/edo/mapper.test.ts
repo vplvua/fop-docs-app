@@ -13,6 +13,8 @@ function makeAct(overrides: Partial<Act> = {}): Act {
     unitPrice: "200.00",
     quantity: "3",
     quantityUnit: "міс.",
+    amount: "600.00",
+    billingPeriod: "monthly",
     actDate: "2026-04-30",
     number: "№4",
     clientSnapshot: {
@@ -59,18 +61,32 @@ describe("actToCreateDocumentPayload", () => {
     expect(payload.filename).toBe("act_№5/2_2026-05-31.pdf");
   });
 
-  it("calculates amount as integer from unitPrice × quantity", () => {
-    const act = makeAct({ unitPrice: "200.00", quantity: "3" });
+  it("sends amount in kopiykas from the stored paid total", () => {
+    const act = makeAct({ amount: "200.00" });
     const payload = actToCreateDocumentPayload(act, "base64");
 
-    expect(payload.amount).toBe(600);
+    expect(payload.amount).toBe(20000);
   });
 
-  it("rounds amount to integer for fractional results", () => {
-    const act = makeAct({ unitPrice: "1.40", quantity: "100" });
+  it("converts a larger total to kopiykas", () => {
+    const act = makeAct({ amount: "1624.00" });
     const payload = actToCreateDocumentPayload(act, "base64");
 
-    expect(payload.amount).toBe(140);
+    expect(payload.amount).toBe(162400);
+  });
+
+  it("uses the discounted paid total for an annual act (2000, not 12 × 200)", () => {
+    const act = makeAct({
+      unitPrice: "200.00",
+      quantity: "12",
+      amount: "2000.00",
+      billingPeriod: "annual",
+    });
+    const payload = actToCreateDocumentPayload(act, "base64");
+
+    expect(payload.amount).toBe(200000);
+    expect(payload.amount).not.toBe(2400);
+    expect(payload.amount).not.toBe(240000);
   });
 
   it("builds participants from client snapshot", () => {

@@ -64,6 +64,7 @@ interface BuildActStubInput {
   serviceType: ServiceType;
   unitPrice: string;
   quantity: string;
+  billingPeriod: "monthly" | "annual";
   existingActCount: number;
   serviceNames: ServiceNames;
 }
@@ -82,6 +83,10 @@ export function buildActStub(input: BuildActStubInput): ActStubData {
     unitPrice,
     quantity,
     quantityUnit: ACT_QUANTITY_UNIT,
+    // The paid total is the act's authoritative sum (D3); for monthly acts it
+    // equals unitPrice × quantity, for annual acts it is the discounted amount.
+    amount: payment.amount,
+    billingPeriod: input.billingPeriod,
     actDate,
     number,
     clientSnapshot: buildClientSnapshot(client),

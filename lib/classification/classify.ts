@@ -118,7 +118,10 @@ export function classify(input: ClassificationInput): ClassificationResult {
     };
   }
 
-  const qtyResult = resolveQuantity(serviceType, payment.amount, unitPrice, payment.purpose);
+  const qtyResult = resolveQuantity(serviceType, payment.amount, unitPrice, payment.purpose, {
+    annualPaidMonths: input.annualPaidMonths,
+    hasOverride: client.accessPriceOverride != null,
+  });
 
   if (qtyResult.status === "mismatch") {
     return {
@@ -137,6 +140,7 @@ export function classify(input: ClassificationInput): ClassificationResult {
     serviceType,
     unitPrice,
     quantity: qtyResult.quantity,
+    billingPeriod: qtyResult.billingPeriod,
     existingActCount: input.existingActCount,
     serviceNames: input.serviceNames,
   });
@@ -148,6 +152,8 @@ export function classify(input: ClassificationInput): ClassificationResult {
     unitPrice,
     quantity: qtyResult.quantity,
     quantityUnit: qtyResult.quantityUnit,
+    amount: payment.amount,
+    billingPeriod: qtyResult.billingPeriod,
     parsedContractNumbers,
     actStub,
   };

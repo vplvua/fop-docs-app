@@ -25,8 +25,10 @@ function formatDate(dateStr: string): string {
   return `${d}.${m}.${y}`;
 }
 
-function totalAmount(unitPrice: string, quantity: string): string {
-  return (Number(unitPrice) * Number(quantity)).toFixed(2);
+// The act's total is the stored paid amount (D3), NOT unit_price × quantity —
+// a discounted annual act shows its exact paid sum (e.g. 12 шт. – 2000.00).
+function totalAmount(amount: string): string {
+  return Number(amount).toFixed(2);
 }
 
 function formatQuantity(quantity: string): string {
@@ -149,7 +151,7 @@ function RequisitesTable({ client, fop }: { client: ClientSnapshot; fop: FopRequ
 export function ActTemplate({ act, fop }: ActTemplateProps) {
   const client = act.clientSnapshot as ClientSnapshot;
   const contract = act.contractSnapshot as ContractSnapshot;
-  const total = totalAmount(act.unitPrice, act.quantity);
+  const total = totalAmount(act.amount);
   const quantity = formatQuantity(act.quantity);
 
   return (
