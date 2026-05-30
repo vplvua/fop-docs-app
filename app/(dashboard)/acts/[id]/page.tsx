@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import type { ClientSnapshot, ContractSnapshot } from "@/lib/classification/types";
 
+import { PageContainer } from "@/app/components/page-container";
+
 import { ActDetailPanel } from "./act-detail-panel";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -66,27 +68,29 @@ export default async function ActPage({ params }: Props) {
   if (!act) notFound();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-heading-2 text-foreground">Акт {act.number}</h1>
-        <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[act.status] ?? "bg-muted text-muted-foreground"}`}
-        >
-          {STATUS_LABELS[act.status] ?? act.status}
-        </span>
+    <PageContainer>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-heading-2 text-foreground">Акт {act.number}</h1>
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[act.status] ?? "bg-muted text-muted-foreground"}`}
+          >
+            {STATUS_LABELS[act.status] ?? act.status}
+          </span>
+        </div>
+        <SnapshotPanel act={act} />
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <ActDetailPanel
+            actId={act.id}
+            status={act.status}
+            edoProvider={act.edoProvider}
+            serviceDescription={act.serviceDescription}
+            edoDocId={act.edoDocId}
+            edoStatus={act.edoStatus}
+          />
+        </div>
       </div>
-      <SnapshotPanel act={act} />
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <ActDetailPanel
-          actId={act.id}
-          status={act.status}
-          edoProvider={act.edoProvider}
-          serviceDescription={act.serviceDescription}
-          edoDocId={act.edoDocId}
-          edoStatus={act.edoStatus}
-        />
-      </div>
-    </div>
+    </PageContainer>
   );
 }
 

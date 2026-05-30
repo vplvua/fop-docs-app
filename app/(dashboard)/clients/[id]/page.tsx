@@ -7,6 +7,8 @@ import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
 import { payments } from "@/lib/db/schema/payments";
 
+import { PageContainer } from "@/app/components/page-container";
+
 import { ClientCard } from "./client-card";
 
 interface Props {
@@ -35,12 +37,14 @@ export default async function ClientPage({ params, searchParams }: Props) {
     db.select().from(acts).where(eq(acts.clientId, id)).orderBy(desc(acts.actDate)),
   ]);
   return (
-    <ClientCard
-      client={client}
-      contract={contract ?? null}
-      payments={clientPayments}
-      acts={clientActs}
-      activeTab={tab ?? "info"}
-    />
+    <PageContainer>
+      <ClientCard
+        client={client}
+        contract={contract ?? null}
+        payments={clientPayments}
+        acts={clientActs}
+        activeTab={tab ?? "info"}
+      />
+    </PageContainer>
   );
 }

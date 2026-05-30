@@ -6,6 +6,8 @@ import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
 import { payments } from "@/lib/db/schema/payments";
 
+import { PageContainer } from "@/app/components/page-container";
+
 import { ClassificationPanel, type ClientCandidate } from "./classification-panel";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -59,40 +61,42 @@ export default async function PaymentPage({ params }: Props) {
   const candidates = await loadCandidates(payment.classificationReason);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-heading-2 text-foreground">Платіж</h1>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Field label="Дата" value={payment.paymentDate} />
-          <Field label="Сума" value={`${payment.amount} грн`} />
-          <Field label="Призначення" value={payment.purpose} full />
-          <Field label="Платник" value={payment.payerName} />
-          <Field label="ЄДРПОУ" value={payment.payerLegalId} />
-          <Field label="IBAN" value={payment.payerBankAccount ?? "—"} />
-          <Field label="Статус" value={STATUS_LABELS[payment.status] ?? payment.status} />
-          <Field label="ID транзакції" value={payment.bankTransactionId} />
-          {payment.classificationReason ? (
-            <Field label="Причина" value={payment.classificationReason} />
-          ) : null}
-        </dl>
+    <PageContainer>
+      <div className="space-y-6">
+        <h1 className="text-heading-2 text-foreground">Платіж</h1>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <Field label="Дата" value={payment.paymentDate} />
+            <Field label="Сума" value={`${payment.amount} грн`} />
+            <Field label="Призначення" value={payment.purpose} full />
+            <Field label="Платник" value={payment.payerName} />
+            <Field label="ЄДРПОУ" value={payment.payerLegalId} />
+            <Field label="IBAN" value={payment.payerBankAccount ?? "—"} />
+            <Field label="Статус" value={STATUS_LABELS[payment.status] ?? payment.status} />
+            <Field label="ID транзакції" value={payment.bankTransactionId} />
+            {payment.classificationReason ? (
+              <Field label="Причина" value={payment.classificationReason} />
+            ) : null}
+          </dl>
+        </div>
+        <ClassificationPanel
+          paymentId={payment.id}
+          status={payment.status}
+          classificationReason={payment.classificationReason}
+          actId={payment.actId}
+          clientId={payment.clientId}
+          candidates={candidates}
+        />
+        <details className="rounded-xl border border-border bg-card shadow-sm">
+          <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">
+            raw_data (JSON)
+          </summary>
+          <pre className="overflow-x-auto border-t border-border px-6 py-4 text-xs text-muted-foreground">
+            {JSON.stringify(payment.rawData, null, 2)}
+          </pre>
+        </details>
       </div>
-      <ClassificationPanel
-        paymentId={payment.id}
-        status={payment.status}
-        classificationReason={payment.classificationReason}
-        actId={payment.actId}
-        clientId={payment.clientId}
-        candidates={candidates}
-      />
-      <details className="rounded-xl border border-border bg-card shadow-sm">
-        <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">
-          raw_data (JSON)
-        </summary>
-        <pre className="overflow-x-auto border-t border-border px-6 py-4 text-xs text-muted-foreground">
-          {JSON.stringify(payment.rawData, null, 2)}
-        </pre>
-      </details>
-    </div>
+    </PageContainer>
   );
 }
 

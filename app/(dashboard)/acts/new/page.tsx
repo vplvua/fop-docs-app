@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
 
+import { PageContainer } from "@/app/components/page-container";
+
 import { ManualActForm, type ContractClient } from "./manual-act-form";
 
 export const metadata = { title: "Створити акт вручну · ФОП Документи" };
@@ -30,27 +32,29 @@ export default async function NewManualActPage() {
   const contractClients = await loadContractClients();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-heading-2 text-foreground">Створити акт вручну</h1>
-        <Link
-          href="/acts"
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-        >
-          ← До актів
-        </Link>
-      </div>
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Для платежів, що не надійшли через ПриватБанк (інший банк або період до запуску додатку).
-        Створюється акт і фоновий платіж-підтвердження; акт надсилається в Дубідок на підпис.
-      </p>
-      {contractClients.length === 0 ? (
-        <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-          Немає клієнтів з договором. Додайте договір клієнту, щоб створити акт.
+    <PageContainer>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-heading-2 text-foreground">Створити акт вручну</h1>
+          <Link
+            href="/acts"
+            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            ← До актів
+          </Link>
+        </div>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Для платежів, що не надійшли через ПриватБанк (інший банк або період до запуску додатку).
+          Створюється акт і фоновий платіж-підтвердження; акт надсилається в Дубідок на підпис.
         </p>
-      ) : (
-        <ManualActForm clients={contractClients} />
-      )}
-    </div>
+        {contractClients.length === 0 ? (
+          <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+            Немає клієнтів з договором. Додайте договір клієнту, щоб створити акт.
+          </p>
+        ) : (
+          <ManualActForm clients={contractClients} />
+        )}
+      </div>
+    </PageContainer>
   );
 }

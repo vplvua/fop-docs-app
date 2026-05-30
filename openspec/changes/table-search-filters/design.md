@@ -2,12 +2,12 @@
 
 ## URL params (extend the table contract)
 
-| Param | Surfaces | Meaning |
-|-------|----------|---------|
-| `q` | all | debounced search text |
-| `from` / `to` | payments, acts | custom date range (ISO `YYYY-MM-DD`, Europe/Kyiv) |
-| `period` | payments, acts | preset key: `today` \| `this_week` \| `last_week` \| `this_month` \| `last_month` \| `this_quarter` \| `last_quarter` |
-| `service_type` | acts | `sms` \| `access` |
+| Param          | Surfaces       | Meaning                                                                                                               |
+| -------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `q`            | all            | debounced search text                                                                                                 |
+| `from` / `to`  | payments, acts | custom date range (ISO `YYYY-MM-DD`, Europe/Kyiv)                                                                     |
+| `period`       | payments, acts | preset key: `today` \| `this_week` \| `last_week` \| `this_month` \| `last_month` \| `this_quarter` \| `last_quarter` |
+| `service_type` | acts           | `sms` \| `access`                                                                                                     |
 
 `period` and `from`/`to` are mutually exclusive — selecting a preset clears custom dates and vice-versa. Existing filter params (`status`, `source`, `edo`) are unchanged. Any filter/search change drops `page` (resets to page 1, per `table-pagination-sorting`).
 
@@ -31,7 +31,7 @@ Custom `from`/`to`: either bound optional (open-ended range allowed). Invalid da
 - **Payments:** join `clients` on `payments.client_id`. Search = `ilike(payer_name, %q%)` OR `ilike(purpose, %q%)` OR (`q` all-digits → `clients.moeosbb_user_id = q`). The MoeOSBB-id branch only matches linked payments (`client_id` set); documented limitation. Date filter on `payment_date`.
 - **Acts:** join `clients` on `acts.client_id`. Search = `ilike(clients.name, %q%)` OR (`q` all-digits → `clients.moeosbb_user_id = q`) — replaces the `service_description` search. Filters: status (existing), `service_type` (new: sms/access), edo (existing), date on `act_date`.
 
-**Decision (acts search target):** match the **current** client via join, not the frozen `client_snapshot.name`. Rationale: consistent with MoeOSBB-id search (id lives only on `clients`), and the operator searches by who the client *is now*. Acts whose `client_id` is unset would not match by name — acceptable (acts always carry a client).
+**Decision (acts search target):** match the **current** client via join, not the frozen `client_snapshot.name`. Rationale: consistent with MoeOSBB-id search (id lives only on `clients`), and the operator searches by who the client _is now_. Acts whose `client_id` is unset would not match by name — acceptable (acts always carry a client).
 
 MoeOSBB-id detection: treat `q` as an id query when it is all digits; run it as an additional OR branch so a numeric string still also matches names/purpose where relevant.
 

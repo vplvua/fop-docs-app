@@ -1,9 +1,15 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useCallback } from "react";
-
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  RowLink,
+  Td,
+  Th,
+} from "@/app/components/data-table";
 import type { Client } from "@/lib/db/schema/clients";
+
+export const CLIENTS_COLUMNS = ["Назва", "ЄДРПОУ", "Квартири", "ЕДО", "MoeOSBB", "Створено"];
 
 const EDO_LABELS: Record<string, string> = {
   dubidoc: "Дубідок",
@@ -19,62 +25,34 @@ function EdoBadge({ provider }: { provider: string }) {
   );
 }
 
-function ClientRow({ client }: { client: Client }) {
-  const router = useRouter();
-  const handleClick = useCallback(() => router.push(`/clients/${client.id}`), [router, client.id]);
-
-  return (
-    <tr onClick={handleClick} className="cursor-pointer transition-colors hover:bg-accent/50">
-      <td className="px-4 py-3 text-sm font-medium text-foreground">{client.name}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{client.legalId}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{client.apartmentsCount ?? "—"}</td>
-      <td className="px-4 py-3">
-        <EdoBadge provider={client.edoProvider} />
-      </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{client.moeosbbUserId ?? "—"}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        {client.createdAt.toLocaleDateString("uk-UA")}
-      </td>
-    </tr>
-  );
-}
-
 export function ClientsTable({ rows }: { rows: Client[] }) {
   if (rows.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Клієнтів не знайдено.</p>;
+    return <DataTableEmpty>Клієнтів не знайдено.</DataTableEmpty>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-left">
-        <thead className="border-b border-border bg-muted/50">
-          <tr>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Назва
-            </th>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              ЄДРПОУ
-            </th>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Квартири
-            </th>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              ЕДО
-            </th>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              MoeOSBB
-            </th>
-            <th className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Створено
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((c) => (
-            <ClientRow key={c.id} client={c} />
+    <DataTable>
+      <DataTableHead>
+        <tr>
+          {CLIENTS_COLUMNS.map((label) => (
+            <Th key={label}>{label}</Th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </DataTableHead>
+      <DataTableBody>
+        {rows.map((c) => (
+          <RowLink key={c.id} href={`/clients/${c.id}`} label={c.name}>
+            <Td className="font-medium">{c.name}</Td>
+            <Td className="text-muted-foreground">{c.legalId}</Td>
+            <Td className="text-muted-foreground">{c.apartmentsCount ?? "—"}</Td>
+            <Td>
+              <EdoBadge provider={c.edoProvider} />
+            </Td>
+            <Td className="text-muted-foreground">{c.moeosbbUserId ?? "—"}</Td>
+            <Td className="text-muted-foreground">{c.createdAt.toLocaleDateString("uk-UA")}</Td>
+          </RowLink>
+        ))}
+      </DataTableBody>
+    </DataTable>
   );
 }

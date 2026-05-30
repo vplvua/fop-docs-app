@@ -26,7 +26,7 @@ export async function TopBar() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "—";
   const queueCount = await getQueueCount();
   return (
-    <header className="border-b border-border bg-card">
+    <header className="shrink-0 border-b border-border bg-card">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="text-sm font-semibold tracking-tight text-foreground">

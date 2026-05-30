@@ -1,6 +1,7 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 
+import { DataTablePage } from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
@@ -49,9 +50,14 @@ export default async function QueuePage({ searchParams }: Props) {
   const groups = groupByReason(vms);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-heading-2 text-foreground">Черга</h1>
-      <QueueTabs activeTab={tab} />
+    <DataTablePage
+      header={
+        <>
+          <h1 className="text-heading-2 text-foreground">Черга</h1>
+          <QueueTabs activeTab={tab} />
+        </>
+      }
+    >
       {groups.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
           {tab === "awaiting_review"
@@ -75,7 +81,7 @@ export default async function QueuePage({ searchParams }: Props) {
           ))}
         </div>
       )}
-    </div>
+    </DataTablePage>
   );
 }
 

@@ -1,11 +1,23 @@
 import { desc, eq, ilike, and } from "drizzle-orm";
 import Link from "next/link";
 
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  DataTablePage,
+  RowLink,
+  Td,
+  Th,
+} from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import type { ClientSnapshot } from "@/lib/classification/types";
 
 export const metadata = { title: "Акти · ФОП Документи" };
+
+export const ACTS_COLUMNS = ["Дата", "Номер", "Клієнт", "Послуга", "Сума", "ЕДО", "Статус"];
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
@@ -56,19 +68,24 @@ export default async function ActsPage({ searchParams }: Props) {
     .limit(500);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-heading-2 text-foreground">Акти</h1>
-        <Link
-          href="/acts/new"
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-        >
-          Створити вручну
-        </Link>
-      </div>
-      <ActsToolbar params={params} />
+    <DataTablePage
+      header={
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-heading-2 text-foreground">Акти</h1>
+            <Link
+              href="/acts/new"
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Створити вручну
+            </Link>
+          </div>
+          <ActsToolbar params={params} />
+        </>
+      }
+    >
       <ActsTable rows={rows} />
-    </div>
+    </DataTablePage>
   );
 }
 
@@ -109,30 +126,24 @@ function ActsToolbar({ params }: { params: Record<string, string | undefined> })
 
 function ActsTable({ rows }: { rows: (typeof acts.$inferSelect)[] }) {
   if (rows.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Немає актів</p>;
+    return <DataTableEmpty>Немає актів</DataTableEmpty>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Дата</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Номер</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Клієнт</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Послуга</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Сума</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">ЕДО</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Статус</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((a) => (
-            <ActRow key={a.id} act={a} />
+    <DataTable>
+      <DataTableHead>
+        <tr>
+          {ACTS_COLUMNS.map((label) => (
+            <Th key={label}>{label}</Th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </DataTableHead>
+      <DataTableBody>
+        {rows.map((a) => (
+          <ActRow key={a.id} act={a} />
+        ))}
+      </DataTableBody>
+    </DataTable>
   );
 }
 
@@ -141,26 +152,22 @@ function ActRow({ act }: { act: typeof acts.$inferSelect }) {
   const total = Number(act.amount).toFixed(2);
 
   return (
-    <tr className="border-b border-border last:border-0">
-      <td className="px-4 py-3">
-        <Link href={`/acts/${act.id}`} className="hover:underline">
-          {act.actDate}
-        </Link>
-      </td>
-      <td className="px-4 py-3">{act.number}</td>
-      <td className="max-w-xs truncate px-4 py-3" title={client.name}>
+    <RowLink href={`/acts/${act.id}`} label={`Акт ${act.number}`}>
+      <Td>{act.actDate}</Td>
+      <Td>{act.number}</Td>
+      <Td className="max-w-xs truncate" title={client.name}>
         {client.name}
-      </td>
-      <td className="px-4 py-3">{act.serviceType}</td>
-      <td className="px-4 py-3">{total} грн</td>
-      <td className="px-4 py-3">{EDO_LABELS[act.edoProvider] ?? act.edoProvider}</td>
-      <td className="px-4 py-3">
+      </Td>
+      <Td>{act.serviceType}</Td>
+      <Td>{total} грн</Td>
+      <Td>{EDO_LABELS[act.edoProvider] ?? act.edoProvider}</Td>
+      <Td>
         <span
           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[act.status] ?? "bg-muted text-muted-foreground"}`}
         >
           {STATUS_LABELS[act.status] ?? act.status}
         </span>
-      </td>
-    </tr>
+      </Td>
+    </RowLink>
   );
 }

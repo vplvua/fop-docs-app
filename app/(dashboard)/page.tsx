@@ -7,6 +7,8 @@ import { payments } from "@/lib/db/schema/payments";
 import { DASHBOARD_INTEGRATIONS, deriveHealth, type DerivedHealth } from "@/lib/dashboard/health";
 import { getIntegrationHealth } from "@/lib/observability";
 
+import { PageContainer } from "../components/page-container";
+
 import { DubidocPollButton } from "./dubidoc-poll-button";
 import { MoeosbbSyncButton } from "./moeosbb-sync-button";
 import { PrivatbankPollButton } from "./privatbank-poll-button";
@@ -40,43 +42,45 @@ export default async function DashboardPage() {
   const healthByService = new Map(health.map((h) => [h.service, h]));
 
   return (
-    <section className="space-y-8">
-      <h1 className="text-heading-2 text-foreground">Дашборд</h1>
+    <PageContainer>
+      <section className="space-y-8">
+        <h1 className="text-heading-2 text-foreground">Дашборд</h1>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {DASHBOARD_INTEGRATIONS.map((integration) => (
-          <HealthBanner
-            key={integration.service}
-            name={integration.name}
-            health={deriveHealth(healthByService.get(integration.service))}
-          />
-        ))}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <CounterCard label="Платежів у черзі" value={queued} href="/queue?tab=in_queue" />
-        <CounterCard
-          label="Платежів на апрув"
-          value={awaitingReview}
-          href="/queue?tab=awaiting_review"
-        />
-        <CounterCard
-          label="Актів очікують підпису"
-          value={awaitingSignature}
-          href="/acts?status=sent_to_edo"
-        />
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-medium text-foreground">Ручні дії</h2>
-        <div className="space-y-3">
-          <PrivatbankPollButton />
-          <MoeosbbSyncButton />
-          <DubidocPollButton />
-          <RegenerateActsButton />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {DASHBOARD_INTEGRATIONS.map((integration) => (
+            <HealthBanner
+              key={integration.service}
+              name={integration.name}
+              health={deriveHealth(healthByService.get(integration.service))}
+            />
+          ))}
         </div>
-      </div>
-    </section>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <CounterCard label="Платежів у черзі" value={queued} href="/queue?tab=in_queue" />
+          <CounterCard
+            label="Платежів на апрув"
+            value={awaitingReview}
+            href="/queue?tab=awaiting_review"
+          />
+          <CounterCard
+            label="Актів очікують підпису"
+            value={awaitingSignature}
+            href="/acts?status=sent_to_edo"
+          />
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-medium text-foreground">Ручні дії</h2>
+          <div className="space-y-3">
+            <PrivatbankPollButton />
+            <MoeosbbSyncButton />
+            <DubidocPollButton />
+            <RegenerateActsButton />
+          </div>
+        </div>
+      </section>
+    </PageContainer>
   );
 }
 

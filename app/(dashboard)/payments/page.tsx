@@ -1,10 +1,22 @@
 import { desc, eq, ilike, or, and } from "drizzle-orm";
 import Link from "next/link";
 
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  DataTablePage,
+  RowLink,
+  Td,
+  Th,
+} from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema/payments";
 
 export const metadata = { title: "Платежі · ФОП Документи" };
+
+export const PAYMENTS_COLUMNS = ["Дата", "Сума", "Призначення", "Платник", "Статус"];
 
 const STATUS_LABELS: Record<string, string> = {
   received: "Отримано",
@@ -45,19 +57,24 @@ export default async function PaymentsPage({ searchParams }: Props) {
     .limit(500);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-heading-2 text-foreground">Платежі</h1>
-        <Link
-          href="/payments/import"
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-        >
-          Завантажити за датою
-        </Link>
-      </div>
-      <PaymentsToolbar currentStatus={status} currentSearch={q} />
+    <DataTablePage
+      header={
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-heading-2 text-foreground">Платежі</h1>
+            <Link
+              href="/payments/import"
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Завантажити за датою
+            </Link>
+          </div>
+          <PaymentsToolbar currentStatus={status} currentSearch={q} />
+        </>
+      }
+    >
       <PaymentsTable rows={rows} />
-    </div>
+    </DataTablePage>
   );
 }
 
@@ -104,45 +121,37 @@ function PaymentsToolbar({
 
 function PaymentsTable({ rows }: { rows: (typeof payments.$inferSelect)[] }) {
   if (rows.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Немає платежів</p>;
+    return <DataTableEmpty>Немає платежів</DataTableEmpty>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Дата</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Сума</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Призначення</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Платник</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Статус</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((p) => (
-            <tr key={p.id} className="border-b border-border last:border-0">
-              <td className="px-4 py-3">
-                <Link href={`/payments/${p.id}`} className="hover:underline">
-                  {p.paymentDate}
-                </Link>
-              </td>
-              <td className="px-4 py-3">{p.amount}</td>
-              <td className="max-w-xs truncate px-4 py-3" title={p.purpose}>
-                {p.purpose}
-              </td>
-              <td className="px-4 py-3">{p.payerName}</td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[p.status] ?? "bg-muted text-muted-foreground"}`}
-                >
-                  {STATUS_LABELS[p.status] ?? p.status}
-                </span>
-              </td>
-            </tr>
+    <DataTable>
+      <DataTableHead>
+        <tr>
+          {PAYMENTS_COLUMNS.map((label) => (
+            <Th key={label}>{label}</Th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </DataTableHead>
+      <DataTableBody>
+        {rows.map((p) => (
+          <RowLink key={p.id} href={`/payments/${p.id}`} label={`Платіж ${p.paymentDate}`}>
+            <Td>{p.paymentDate}</Td>
+            <Td>{p.amount}</Td>
+            <Td className="max-w-xs truncate" title={p.purpose}>
+              {p.purpose}
+            </Td>
+            <Td>{p.payerName}</Td>
+            <Td>
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGES[p.status] ?? "bg-muted text-muted-foreground"}`}
+              >
+                {STATUS_LABELS[p.status] ?? p.status}
+              </span>
+            </Td>
+          </RowLink>
+        ))}
+      </DataTableBody>
+    </DataTable>
   );
 }

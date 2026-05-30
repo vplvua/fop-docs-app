@@ -4,12 +4,12 @@
 
 All four params live in the query string (source of truth, shareable, back/forward-safe):
 
-| Param | Values | Default | Notes |
-|-------|--------|---------|-------|
-| `page` | 1-based int | `1` | clamped to `[1, totalPages]` |
-| `perPage` | `25` \| `50` \| `100` | `25` | invalid → default |
-| `sort` | column key (per-table allow-list) | per-table | unknown key → default |
-| `dir` | `asc` \| `desc` | per-table | invalid → default |
+| Param     | Values                            | Default   | Notes                        |
+| --------- | --------------------------------- | --------- | ---------------------------- |
+| `page`    | 1-based int                       | `1`       | clamped to `[1, totalPages]` |
+| `perPage` | `25` \| `50` \| `100`             | `25`      | invalid → default            |
+| `sort`    | column key (per-table allow-list) | per-table | unknown key → default        |
+| `dir`     | `asc` \| `desc`                   | per-table | invalid → default            |
 
 These coexist with the filter/search params introduced by `table-search-filters`. Any filter/search change resets `page` to 1 (handled by the toolbar building hrefs without `page`); changing `perPage` also resets to page 1.
 

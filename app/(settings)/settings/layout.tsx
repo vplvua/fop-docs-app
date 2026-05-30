@@ -14,9 +14,9 @@ const SETTINGS_NAV = [
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <TopBar />
-      <main className="flex-1">
+      <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 py-8">
           <h1 className="mb-6 text-heading-2 text-foreground">Налаштування</h1>
           <div className="flex gap-8">
