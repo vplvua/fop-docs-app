@@ -34,6 +34,7 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-deep: var(--warning-deep);
   --color-destructive-deep: var(--destructive-deep);
+  --color-readiness-amber: var(--readiness-amber);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -83,6 +84,9 @@
   --success-deep: #0c6b28; /* deep green — 5.9:1 on bg-success/12 */
   --warning-deep: #793400; /* colors.brand-orange-deep — 7.8:1 on bg-warning/12 */
   --destructive-deep: #991b1b; /* deep red — 7.0:1 on bg-destructive/12 */
+  /* Brighter amber for the client act-readiness 🟡 dot only: warning #dd5b00 is a
+     burnt orange too close to destructive #e03131 to tell apart at 10px (DESIGN.md). */
+  --readiness-amber: #f5a623; /* colors.semantic-amber */
   --border: #e5e3df; /* colors.hairline */
   --input: #c8c4be; /* colors.hairline-strong */
   --ring: #5645d4; /* colors.primary (focus ring) */

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DataTablePage, Pagination } from "@/app/components/data-table";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
+import { contracts } from "@/lib/db/schema/contracts";
 import { clampPage, offsetFor, parseTableQuery } from "@/lib/data-tables/parse-table-query";
 import { clientsTableQuery } from "@/lib/data-tables/configs";
 
@@ -73,6 +74,7 @@ export default async function ClientsPage({ searchParams }: Props) {
   const rows = await db
     .select()
     .from(clients)
+    .leftJoin(contracts, eq(contracts.clientId, clients.id))
     .where(where)
     .orderBy(...orderArgs)
     .limit(query.perPage)

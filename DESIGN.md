@@ -51,6 +51,7 @@ colors:
   semantic-success: "#1aae39"
   semantic-warning: "#dd5b00"
   semantic-error: "#e03131"
+  semantic-amber: "#f5a623"
 
 typography:
   hero-display:
@@ -530,6 +531,7 @@ The system uses a Notion-Sans typeface (Inter-based) across every UI surface —
 - **Success** ({colors.semantic-success}): Confirmation green
 - **Warning** ({colors.semantic-warning}): Mid-priority alerts (orange)
 - **Error** ({colors.semantic-error}): Validation errors (red)
+- **Readiness amber** ({colors.semantic-amber}): brighter amber used **only** for the client act-readiness 🟡 status dot, so it reads distinctly from the 🔴 dot at small (10px) size — do not reuse for general warnings (use {colors.semantic-warning}).
 
 ## Typography
 
