@@ -1,13 +1,20 @@
 "use server";
 
 import { eq, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
+import { deleteManualAct } from "@/lib/acts/delete-manual-act";
 import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
+import { isEditableManualAct } from "@/lib/acts/manual-act-eligibility";
+import { manualActEditSchema, type ManualActEditInput } from "@/lib/acts/manual-act-schema";
+import { updateManualAct } from "@/lib/acts/update-manual-act";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
+import { payments } from "@/lib/db/schema/payments";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { validateVchasnoTransition } from "@/lib/edo/vchasno-state";
 import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import { logger } from "@/lib/logging";
 
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
   const [act] = await db
@@ -54,6 +61,74 @@ export async function updateServiceDescriptionAction(
   generateAndStoreActPdf(actId).catch(() => {});
 
   return { ok: true };
+}
+
+/**
+ * Load an act with its backing payment `source` to decide whether it is an
+ * editable manual act. Shared guard for the edit/delete actions below.
+ */
+async function loadManualActGuard(actId: string) {
+  const [row] = await db
+    .select({
+      status: acts.status,
+      edoProvider: acts.edoProvider,
+      source: payments.source,
+    })
+    .from(acts)
+    .innerJoin(payments, eq(acts.paymentId, payments.id))
+    .where(eq(acts.id, actId))
+    .limit(1);
+  return row;
+}
+
+export async function updateManualActAction(
+  actId: string,
+  input: ManualActEditInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const row = await loadManualActGuard(actId);
+  if (!row) return { ok: false, error: "Акт не знайдено" };
+  if (!isEditableManualAct(row)) {
+    return { ok: false, error: "Редагувати можна лише ручний акт, який ще не відправлено в ЕДО" };
+  }
+
+  const parsed = manualActEditSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Перевірте поля форми" };
+
+  try {
+    await updateManualAct(actId, parsed.data);
+    revalidatePath(`/acts/${actId}`);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Невідома помилка";
+    logger.error(
+      { event: "manual_act.update_action_error", actId, error: message },
+      "update failed",
+    );
+    return { ok: false, error: `Не вдалося оновити акт: ${message}` };
+  }
+}
+
+export async function deleteManualActAction(
+  actId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const row = await loadManualActGuard(actId);
+  if (!row) return { ok: false, error: "Акт не знайдено" };
+  if (!isEditableManualAct(row)) {
+    return { ok: false, error: "Видалити можна лише ручний акт, який ще не відправлено в ЕДО" };
+  }
+
+  try {
+    await deleteManualAct(actId);
+    revalidatePath("/acts");
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Невідома помилка";
+    logger.error(
+      { event: "manual_act.delete_action_error", actId, error: message },
+      "delete failed",
+    );
+    return { ok: false, error: `Не вдалося видалити акт: ${message}` };
+  }
 }
 
 export async function markActSignedAction(actId: string): Promise<{ ok: boolean; error?: string }> {

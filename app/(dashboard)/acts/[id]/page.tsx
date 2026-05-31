@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
+import { payments } from "@/lib/db/schema/payments";
+import { isEditableManualAct } from "@/lib/acts/manual-act-eligibility";
 import type { ClientSnapshot, ContractSnapshot } from "@/lib/classification/types";
 
 import { PageContainer } from "@/app/components/page-container";
@@ -64,8 +66,21 @@ function SnapshotPanel({ act }: { act: typeof acts.$inferSelect }) {
 
 export default async function ActPage({ params }: Props) {
   const { id } = await params;
-  const [act] = await db.select().from(acts).where(eq(acts.id, id)).limit(1);
-  if (!act) notFound();
+  const [row] = await db
+    .select({ act: acts, source: payments.source })
+    .from(acts)
+    .innerJoin(payments, eq(acts.paymentId, payments.id))
+    .where(eq(acts.id, id))
+    .limit(1);
+  if (!row) notFound();
+  const { act, source } = row;
+
+  // An editable manual act gets the edit/delete affordances in the panel.
+  const isManual = isEditableManualAct({
+    source,
+    status: act.status,
+    edoProvider: act.edoProvider,
+  });
 
   return (
     <PageContainer>
@@ -87,6 +102,7 @@ export default async function ActPage({ params }: Props) {
             serviceDescription={act.serviceDescription}
             edoDocId={act.edoDocId}
             edoStatus={act.edoStatus}
+            isManual={isManual}
           />
         </div>
       </div>

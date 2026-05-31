@@ -1,9 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-import { regeneratePdfAction, updateServiceDescriptionAction } from "./act-actions";
+import {
+  deleteManualActAction,
+  regeneratePdfAction,
+  updateServiceDescriptionAction,
+} from "./act-actions";
 import { getDownloadUrlAction } from "./download-action";
 import {
   EdoStatusBanners,
@@ -20,6 +25,41 @@ interface Props {
   serviceDescription: string;
   edoDocId: string | null;
   edoStatus: string | null;
+  /** True when this is an editable manual act (manual_external + still mutable). */
+  isManual: boolean;
+}
+
+function DeleteActButton({ actId }: { actId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = useCallback(async () => {
+    if (!window.confirm("Видалити цей акт? Дію не можна скасувати.")) return;
+    setLoading(true);
+    setError(null);
+    const result = await deleteManualActAction(actId);
+    if (result.ok) {
+      router.push("/acts");
+    } else {
+      setLoading(false);
+      setError(result.error ?? "Невідома помилка");
+    }
+  }, [actId, router]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={loading}
+        onClick={handleDelete}
+        className="rounded-lg border border-destructive/30 bg-card px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/12 disabled:opacity-50"
+      >
+        {loading ? "Видалення…" : "Видалити акт"}
+      </button>
+      {error ? <p className="mt-1 text-xs text-destructive-deep">{error}</p> : null}
+    </div>
+  );
 }
 
 function DownloadButton({ actId }: { actId: string }) {
@@ -160,6 +200,7 @@ export function ActDetailPanel({
   serviceDescription,
   edoDocId,
   edoStatus,
+  isManual,
 }: Props) {
   const canEdit = status === "draft" || edoProvider === "vchasno_external";
   const showRetry = status === "draft" && edoProvider === "dubidoc";
@@ -182,10 +223,19 @@ export function ActDetailPanel({
       <div className="flex flex-wrap gap-3">
         <DownloadButton actId={actId} />
         <RegenerateButton actId={actId} />
+        {isManual ? (
+          <Link
+            href={`/acts/${actId}/edit`}
+            className="inline-flex items-center rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            Редагувати акт
+          </Link>
+        ) : null}
         {showMarkSigned ? <MarkSignedButton actId={actId} /> : null}
         {showUnmarkSigned ? <UnmarkSignedButton actId={actId} /> : null}
         {showRetry ? <RetryDubidocButton actId={actId} /> : null}
         {showRefresh ? <RefreshStatusButton actId={actId} /> : null}
+        {isManual ? <DeleteActButton actId={actId} /> : null}
         {showDubidocLink ? (
           <a
             href={`https://my.dubidoc.com.ua/documents/${edoDocId}`}

@@ -3,7 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
+import { updateManualActAction } from "../[id]/act-actions";
 import { createManualActAction, manualActHintAction } from "./actions";
+
+/** Prefilled values + target act for reusing this form in edit mode. */
+export interface ManualActEditConfig {
+  actId: string;
+  initial: {
+    serviceType: "access" | "sms";
+    periodYear: number;
+    periodMonth: number;
+    quantity: string;
+    unitPrice: string;
+    amount: string;
+    bankLabel: string;
+    paymentDate: string;
+  };
+}
 
 export interface ContractClient {
   id: string;
@@ -40,6 +56,8 @@ function computeAmount(unitPrice: string, quantity: string): string {
 interface FieldsProps {
   clients: ContractClient[];
   clientId: string;
+  /** Client and period are immutable in edit mode (they fix the act number + snapshots). */
+  readOnlyIdentity: boolean;
   serviceType: "access" | "sms";
   periodYear: number;
   periodMonth: number;
@@ -68,7 +86,8 @@ function ManualActFields(props: FieldsProps) {
           aria-label="Клієнт"
           value={props.clientId}
           onChange={props.onClient}
-          className={INPUT_CLASS}
+          disabled={props.readOnlyIdentity}
+          className={`${INPUT_CLASS} disabled:cursor-not-allowed disabled:opacity-70`}
         >
           {props.clients.map((c) => (
             <option key={c.id} value={c.id}>
@@ -84,7 +103,8 @@ function ManualActFields(props: FieldsProps) {
           aria-label="Місяць періоду"
           value={props.periodMonth}
           onChange={props.onMonth}
-          className={INPUT_CLASS}
+          disabled={props.readOnlyIdentity}
+          className={`${INPUT_CLASS} disabled:cursor-not-allowed disabled:opacity-70`}
         >
           {MONTHS.map((m, i) => (
             <option key={m} value={i + 1}>
@@ -103,7 +123,8 @@ function ManualActFields(props: FieldsProps) {
           max={2100}
           value={props.periodYear}
           onChange={props.onYear}
-          className={INPUT_CLASS}
+          disabled={props.readOnlyIdentity}
+          className={`${INPUT_CLASS} disabled:cursor-not-allowed disabled:opacity-70`}
         />
       </label>
 
@@ -187,26 +208,36 @@ function ManualActFields(props: FieldsProps) {
   );
 }
 
-export function ManualActForm({ clients }: { clients: ContractClient[] }) {
+export function ManualActForm({
+  clients,
+  edit,
+}: {
+  clients: ContractClient[];
+  edit?: ManualActEditConfig;
+}) {
   const router = useRouter();
   const now = new Date();
+  const isEdit = Boolean(edit);
+  const init = edit?.initial;
 
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
-  const [serviceType, setServiceType] = useState<"access" | "sms">("access");
-  const [periodYear, setPeriodYear] = useState(now.getFullYear());
-  const [periodMonth, setPeriodMonth] = useState(now.getMonth() + 1);
-  const [quantity, setQuantity] = useState("1");
-  const [unitPrice, setUnitPrice] = useState("");
-  const [amount, setAmount] = useState("");
-  const [amountTouched, setAmountTouched] = useState(false);
-  const [bankLabel, setBankLabel] = useState("");
-  const [paymentDate, setPaymentDate] = useState("");
+  const [serviceType, setServiceType] = useState<"access" | "sms">(init?.serviceType ?? "access");
+  const [periodYear, setPeriodYear] = useState(init?.periodYear ?? now.getFullYear());
+  const [periodMonth, setPeriodMonth] = useState(init?.periodMonth ?? now.getMonth() + 1);
+  const [quantity, setQuantity] = useState(init?.quantity ?? "1");
+  const [unitPrice, setUnitPrice] = useState(init?.unitPrice ?? "");
+  const [amount, setAmount] = useState(init?.amount ?? "");
+  // In edit mode the amount is already authoritative — never auto-recompute it.
+  const [amountTouched, setAmountTouched] = useState(isEdit);
+  const [bankLabel, setBankLabel] = useState(init?.bankLabel ?? "");
+  const [paymentDate, setPaymentDate] = useState(init?.paymentDate ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startSubmit] = useTransition();
 
-  // Pull the tariff hint whenever the client/service/period changes.
+  // Pull the tariff hint whenever the client/service/period changes — create only;
+  // in edit mode the stored values are authoritative and must not be overwritten.
   useEffect(() => {
-    if (!clientId) return;
+    if (isEdit || !clientId) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -221,7 +252,7 @@ export function ManualActForm({ clients }: { clients: ContractClient[] }) {
     return () => {
       cancelled = true;
     };
-  }, [clientId, serviceType, periodYear, periodMonth]);
+  }, [isEdit, clientId, serviceType, periodYear, periodMonth]);
 
   // Keep amount = price × quantity until the admin overrides it (D4).
   useEffect(() => {
@@ -272,6 +303,19 @@ export function ManualActForm({ clients }: { clients: ContractClient[] }) {
       e.preventDefault();
       setError(null);
       startSubmit(async () => {
+        if (edit) {
+          const res = await updateManualActAction(edit.actId, {
+            serviceType,
+            quantity,
+            unitPrice,
+            amount,
+            bankLabel,
+            paymentDate,
+          });
+          if (res.ok) router.push(`/acts/${edit.actId}`);
+          else setError(res.error ?? "Невідома помилка");
+          return;
+        }
         const res = await createManualActAction({
           clientId,
           periodYear,
@@ -289,6 +333,7 @@ export function ManualActForm({ clients }: { clients: ContractClient[] }) {
     },
     [
       router,
+      edit,
       clientId,
       periodYear,
       periodMonth,
@@ -306,6 +351,7 @@ export function ManualActForm({ clients }: { clients: ContractClient[] }) {
       <ManualActFields
         clients={clients}
         clientId={clientId}
+        readOnlyIdentity={isEdit}
         serviceType={serviceType}
         periodYear={periodYear}
         periodMonth={periodMonth}
@@ -334,7 +380,13 @@ export function ManualActForm({ clients }: { clients: ContractClient[] }) {
         disabled={pending || !clientId}
         className="h-9 rounded-lg border border-border bg-foreground px-4 text-sm font-medium text-background transition-colors hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Створення…" : "Створити акт і надіслати в Дубідок"}
+        {isEdit
+          ? pending
+            ? "Збереження…"
+            : "Зберегти зміни"
+          : pending
+            ? "Створення…"
+            : "Створити акт і надіслати в Дубідок"}
       </button>
     </form>
   );

@@ -37,3 +37,30 @@ export const manualActFormSchema = z.object({
 
 export type ManualActFormInput = z.input<typeof manualActFormSchema>;
 export type ManualActFormParsed = z.output<typeof manualActFormSchema>;
+
+/**
+ * Manual-act *edit* input — the value fields only. The client and the period are
+ * deliberately absent: they determine the act number and the client/contract/FOP
+ * snapshots, so changing them would force a renumber + snapshot rebuild and is
+ * out of scope. Validated server-side exactly like create.
+ */
+export const manualActEditSchema = z.object({
+  serviceType: z.enum(["access", "sms"]),
+  quantity: positiveDecimal("Кількість"),
+  unitPrice: positiveDecimal("Ціна за одиницю"),
+  amount: positiveDecimal("Сума"),
+  bankLabel: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .transform((v) => (v ? v : null)),
+  paymentDate: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Невірна дата"),
+});
+
+export type ManualActEditInput = z.input<typeof manualActEditSchema>;
+export type ManualActEditParsed = z.output<typeof manualActEditSchema>;
