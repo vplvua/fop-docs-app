@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import type { acts } from "@/lib/db/schema/acts";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
@@ -13,36 +11,10 @@ import { ClientInfoForm } from "./client-info-form";
 import { ClientActsTab, ClientPaymentsTab } from "./client-related";
 import { ClientSyncButton } from "./client-sync-button";
 import { ContractForm } from "./contract-form";
+import { TabNav } from "./tab-nav";
 
 type Payment = typeof payments.$inferSelect;
 type Act = typeof acts.$inferSelect;
-
-const TABS = [
-  { key: "info", label: "Загальна інформація" },
-  { key: "contract", label: "Договір" },
-  { key: "payments", label: "Платежі" },
-  { key: "acts", label: "Акти" },
-] as const;
-
-function TabNav({ clientId, active }: { clientId: string; active: string }) {
-  return (
-    <nav className="flex gap-1 border-b border-border">
-      {TABS.map((t) => (
-        <Link
-          key={t.key}
-          href={`/clients/${clientId}?tab=${t.key}`}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            active === t.key
-              ? "border-b-2 border-primary text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
 
 function ArchiveButton({ client }: { client: Client }) {
   const isArchived = client.autoActDisabled;

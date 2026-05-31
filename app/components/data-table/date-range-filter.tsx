@@ -21,16 +21,28 @@ const DATE_CLASS = cn(
  * custom from/to pair. Preset and custom are mutually exclusive — picking a
  * preset clears the custom dates and vice-versa. Default is "без фільтра" (no
  * date filter). Every change drops `page` so results restart at page 1.
+ *
+ * The URL param keys default to `period` / `from` / `to`, but can be overridden
+ * so several independent filters can coexist on one URL (e.g. the per-tab
+ * filters on the client card use `p_*` for payments and `a_*` for acts).
  */
-export function DateRangeFilter() {
+export function DateRangeFilter({
+  periodKey = "period",
+  fromKey = "from",
+  toKey = "to",
+}: {
+  periodKey?: string;
+  fromKey?: string;
+  toKey?: string;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const period = searchParams.get("period") ?? "";
-  const from = searchParams.get("from") ?? "";
-  const to = searchParams.get("to") ?? "";
+  const period = searchParams.get(periodKey) ?? "";
+  const from = searchParams.get(fromKey) ?? "";
+  const to = searchParams.get(toKey) ?? "";
 
   const push = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -49,25 +61,26 @@ export function DateRangeFilter() {
     (event: ChangeEvent<HTMLSelectElement>) => {
       const value = event.target.value;
       push((params) => {
-        params.delete("from");
-        params.delete("to");
-        if (value) params.set("period", value);
-        else params.delete("period");
+        params.delete(fromKey);
+        params.delete(toKey);
+        if (value) params.set(periodKey, value);
+        else params.delete(periodKey);
       });
     },
-    [push],
+    [push, periodKey, fromKey, toKey],
   );
 
   const handleCustom = useCallback(
     (key: "from" | "to") => (event: ChangeEvent<HTMLInputElement>) => {
       const value = event.target.value;
+      const paramKey = key === "from" ? fromKey : toKey;
       push((params) => {
-        params.delete("period");
-        if (value) params.set(key, value);
-        else params.delete(key);
+        params.delete(periodKey);
+        if (value) params.set(paramKey, value);
+        else params.delete(paramKey);
       });
     },
-    [push],
+    [push, periodKey, fromKey, toKey],
   );
 
   return (

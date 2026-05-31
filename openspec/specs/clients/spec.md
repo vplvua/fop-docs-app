@@ -164,8 +164,10 @@ The client card at `/clients/[id]` SHALL display a tabbed interface with:
 
 - **"Загальна інформація"** tab (default active): editable form with all client fields, grouped by origin (sync vs manual-only).
 - **"Договір"** tab: embedded contract form — create form if no contract exists, edit form with current data if a contract exists.
-- **"Платежі"** tab: stub placeholder with text "Платежі з'являться у Slice 6".
-- **"Акти"** tab: stub placeholder with text "Акти з'являться у Slice 8".
+- **"Платежі"** tab: a table of the client's payments (date, amount, purpose, status), with a **date-range filter** on `payment_date`. No search box and no pagination.
+- **"Акти"** tab: a table of the client's acts (number, date, amount, status), with a **date-range filter** on `act_date`. No search box and no pagination.
+
+The date-range filter on the Платежі and Акти tabs SHALL offer the same presets as the main lists (today / this & last week / this & last month / this & last quarter) plus a custom from/to range, default no filter, computed in Europe/Kyiv with the week starting Monday (per the `data-tables` date-range behavior). Each tab's filter SHALL be independent and scoped to the client card.
 
 A warning banner SHALL be displayed on all tabs if the client has no contract: "Без договору акти не генеруються" (FR-CLI-11). The warning SHALL NOT be displayed if the client has a contract.
 
@@ -185,6 +187,21 @@ Covers: FR-CLI-10, FR-CLI-11.
 
 - **WHEN** the admin clicks the "Договір" tab on a client that has a contract
 - **THEN** the tab SHALL display the contract data in an editable form, with a "Видалити договір" button
+
+#### Scenario: Payments tab lists the client's payments
+
+- **WHEN** the admin opens the "Платежі" tab
+- **THEN** the client's payments SHALL be shown in a table with a date-range filter and no search box or pagination
+
+#### Scenario: Acts tab lists the client's acts
+
+- **WHEN** the admin opens the "Акти" tab
+- **THEN** the client's acts SHALL be shown in a table with a date-range filter and no search box or pagination
+
+#### Scenario: Date filter narrows a card tab
+
+- **WHEN** the admin selects a date preset on the "Акти" tab
+- **THEN** only the client's acts whose `act_date` falls in that range SHALL be shown, and the "Платежі" tab filter SHALL be unaffected
 
 #### Scenario: Contract warning shown when no contract
 
