@@ -62,6 +62,8 @@
 | D-038 | Drizzle ORM як шар доступу до Postgres                                             | [D-038-drizzle-orm.md](D-038-drizzle-orm.md)                         |
 | D-039 | MSW як єдина стратегія HTTP-моків у тестах                                         | [D-039-test-http-mocks.md](D-039-test-http-mocks.md)                 |
 | D-040 | PDF генерація напряму з server action, без HTTP-hop                                | [D-040-pdf-direct-call.md](D-040-pdf-direct-call.md)                 |
+| D-041 | Матчинг клієнта: спершу ЄДРПОУ, потім договір                                      | [D-041-edrpou-first-matching.md](D-041-edrpou-first-matching.md)     |
+| D-042 | Ручне розділення платежу на кілька актів (переглядає D-007)                        | [D-042-payment-split.md](D-042-payment-split.md)                     |
 
 ## Як посилатись на ADR
 

@@ -1,14 +1,16 @@
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
+import { isSplitPayment } from "@/lib/acts/split-origin";
 import { db } from "@/lib/db";
+import { acts } from "@/lib/db/schema/acts";
 import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
 import { payments } from "@/lib/db/schema/payments";
 
 import { PageContainer } from "@/app/components/page-container";
 
-import { ClassificationPanel, type ClientCandidate } from "./classification-panel";
+import { ClassificationPanel, type ClientCandidate, type LinkedAct } from "./classification-panel";
 
 const STATUS_LABELS: Record<string, string> = {
   received: "Отримано",
@@ -53,12 +55,32 @@ async function loadCandidates(classificationReason: string | null): Promise<Clie
   return rows;
 }
 
+/** Acts backing this payment — the canonical set (reverse lookup), since a split
+ * links several acts to one payment (D-042). */
+async function loadLinkedActs(paymentId: string): Promise<LinkedAct[]> {
+  return db
+    .select({
+      id: acts.id,
+      number: acts.number,
+      amount: acts.amount,
+      status: acts.status,
+    })
+    .from(acts)
+    .where(eq(acts.paymentId, paymentId))
+    .orderBy(asc(acts.number));
+}
+
 export default async function PaymentPage({ params }: Props) {
   const { id } = await params;
   const [payment] = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
   if (!payment) notFound();
 
-  const candidates = await loadCandidates(payment.classificationReason);
+  const [candidates, linkedActs] = await Promise.all([
+    loadCandidates(payment.classificationReason),
+    loadLinkedActs(payment.id),
+  ]);
+  // The split marker lives on classification_reason; never surface it as a reason.
+  const showReason = payment.classificationReason && !isSplitPayment(payment.classificationReason);
 
   return (
     <PageContainer>
@@ -74,8 +96,8 @@ export default async function PaymentPage({ params }: Props) {
             <Field label="IBAN" value={payment.payerBankAccount ?? "—"} />
             <Field label="Статус" value={STATUS_LABELS[payment.status] ?? payment.status} />
             <Field label="ID транзакції" value={payment.bankTransactionId} />
-            {payment.classificationReason ? (
-              <Field label="Причина" value={payment.classificationReason} />
+            {showReason ? (
+              <Field label="Причина" value={payment.classificationReason ?? ""} />
             ) : null}
           </dl>
         </div>
@@ -83,9 +105,9 @@ export default async function PaymentPage({ params }: Props) {
           paymentId={payment.id}
           status={payment.status}
           classificationReason={payment.classificationReason}
-          actId={payment.actId}
           clientId={payment.clientId}
           candidates={candidates}
+          acts={linkedActs}
         />
         <details className="rounded-xl border border-border bg-card shadow-sm">
           <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-foreground">

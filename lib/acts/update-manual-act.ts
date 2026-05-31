@@ -6,6 +6,7 @@ import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { logger } from "@/lib/logging";
 
 import { isEditableManualAct } from "./manual-act-eligibility";
+import { isSplitPayment } from "./split-origin";
 import { generateAndStoreActPdf } from "./generate-pdf";
 
 export interface UpdateManualActInput {
@@ -44,6 +45,7 @@ export async function updateManualAct(actId: string, input: UpdateManualActInput
         edoProvider: schema.acts.edoProvider,
         actDate: schema.acts.actDate,
         source: schema.payments.source,
+        classificationReason: schema.payments.classificationReason,
       })
       .from(schema.acts)
       .innerJoin(schema.payments, eq(schema.acts.paymentId, schema.payments.id))
@@ -51,6 +53,11 @@ export async function updateManualAct(actId: string, input: UpdateManualActInput
       .limit(1);
 
     if (!row) throw new Error("Акт не знайдено");
+    // A split act shares its payment with siblings — editing it would desync the
+    // `Σ == payment.amount` invariant. Splits are changed via cancel + re-split.
+    if (isSplitPayment(row.classificationReason)) {
+      throw new Error("Це частина розділеного платежу — скасуйте розділення повністю");
+    }
     if (!isEditableManualAct(row)) {
       throw new Error("Редагувати можна лише ручний акт, який ще не відправлено в ЕДО");
     }

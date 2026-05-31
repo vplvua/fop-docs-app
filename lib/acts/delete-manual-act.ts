@@ -4,6 +4,7 @@ import { dbPool, schema } from "@/lib/db";
 import { logger } from "@/lib/logging";
 
 import { isEditableManualAct } from "./manual-act-eligibility";
+import { isSplitPayment } from "./split-origin";
 
 /**
  * Permanently delete a manual act and its synthetic backing payment in one
@@ -25,6 +26,7 @@ export async function deleteManualAct(actId: string): Promise<void> {
         status: schema.acts.status,
         edoProvider: schema.acts.edoProvider,
         source: schema.payments.source,
+        classificationReason: schema.payments.classificationReason,
       })
       .from(schema.acts)
       .innerJoin(schema.payments, eq(schema.acts.paymentId, schema.payments.id))
@@ -32,6 +34,11 @@ export async function deleteManualAct(actId: string): Promise<void> {
       .limit(1);
 
     if (!row) throw new Error("Акт не знайдено");
+    // A split act shares its payment with siblings — deleting it here would also
+    // drop the shared payment and orphan them. Splits are undone wholesale.
+    if (isSplitPayment(row.classificationReason)) {
+      throw new Error("Це частина розділеного платежу — скасуйте розділення повністю");
+    }
     if (!isEditableManualAct(row)) {
       throw new Error("Видалити можна лише ручний акт, який ще не відправлено в ЕДО");
     }

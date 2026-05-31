@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+import { isSplitPayment } from "@/lib/acts/split-origin";
 import { REASON_GUIDANCE, parseReason } from "@/lib/queue/reasons";
 
 import {
@@ -11,6 +12,7 @@ import {
   linkPaymentClientAction,
   skipPaymentAction,
 } from "./classification-actions";
+import { cancelSplitAction } from "./split/actions";
 
 export interface ClientCandidate {
   id: string;
@@ -19,28 +21,105 @@ export interface ClientCandidate {
   contractNumber: string | null;
 }
 
-function SkippedBadge() {
+export interface LinkedAct {
+  id: string;
+  number: string;
+  amount: string;
+  status: string;
+}
+
+/** «Розділити на акти» entry point — for unclassifiable and skipped payments. */
+function SplitLink({ paymentId }: { paymentId: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <Link
+      href={`/payments/${paymentId}/split`}
+      className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+    >
+      Розділити на акти
+    </Link>
+  );
+}
+
+function SkippedBadge({ paymentId }: { paymentId: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-6 shadow-sm">
       <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-sm font-medium text-muted-foreground">
         Пропущено
       </span>
+      <SplitLink paymentId={paymentId} />
     </div>
   );
 }
 
-function ClassifiedInfo({ actId }: { actId: string | null }) {
+/** Wholesale «Скасувати розділення» — deletes all draft split acts and restores
+ * the payment's pre-split status. */
+function CancelSplitButton({ paymentId }: { paymentId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCancel = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const result = await cancelSplitAction(paymentId);
+    setLoading(false);
+    if (result.ok) router.refresh();
+    else setError(result.error ?? "Помилка");
+  }, [paymentId, router]);
+
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="text-sm font-medium text-muted-foreground">Класифікація</h2>
-      <p className="mt-2 text-sm text-foreground">
-        Платіж класифіковано.{" "}
-        {actId ? (
-          <Link href={`/acts/${actId}`} className="text-primary underline underline-offset-2">
-            Переглянути акт →
-          </Link>
-        ) : null}
-      </p>
+    <div className="space-y-2">
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <button
+        type="button"
+        disabled={loading}
+        onClick={handleCancel}
+        className="rounded-lg border border-destructive/40 bg-card px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/8 disabled:opacity-50"
+      >
+        {loading ? "Скасування…" : "Скасувати розділення"}
+      </button>
+    </div>
+  );
+}
+
+function ActRow({ act }: { act: LinkedAct }) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5">
+      <Link href={`/acts/${act.id}`} className="text-sm text-primary underline underline-offset-2">
+        Акт {act.number} →
+      </Link>
+      <span className="text-sm text-muted-foreground">{act.amount} грн</span>
+    </li>
+  );
+}
+
+function ClassifiedInfo({
+  paymentId,
+  acts,
+  isSplit,
+}: {
+  paymentId: string;
+  acts: LinkedAct[];
+  isSplit: boolean;
+}) {
+  return (
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-sm font-medium text-muted-foreground">
+        {isSplit ? "Розділено на акти" : "Класифікація"}
+      </h2>
+      {acts.length > 0 ? (
+        <ul className="space-y-2">
+          {acts.map((a) => (
+            <ActRow key={a.id} act={a} />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-foreground">Платіж класифіковано.</p>
+      )}
+      {/* Cancel only while every split act is still a draft (no issued EDO doc). */}
+      {isSplit && acts.every((a) => a.status === "draft") ? (
+        <CancelSplitButton paymentId={paymentId} />
+      ) : null}
     </div>
   );
 }
@@ -191,6 +270,7 @@ function ActionButtons({ paymentId }: { paymentId: string }) {
         >
           {loading === "skip" ? "Пропуск…" : "Пропустити"}
         </button>
+        <SplitLink paymentId={paymentId} />
       </div>
     </div>
   );
@@ -200,21 +280,29 @@ interface Props {
   paymentId: string;
   status: string;
   classificationReason: string | null;
-  actId: string | null;
   clientId: string | null;
   candidates: ClientCandidate[];
+  acts: LinkedAct[];
 }
 
 export function ClassificationPanel({
   paymentId,
   status,
   classificationReason,
-  actId,
   clientId,
   candidates,
+  acts,
 }: Props) {
-  if (status === "skipped") return <SkippedBadge />;
-  if (status === "classified") return <ClassifiedInfo actId={actId} />;
+  if (status === "skipped") return <SkippedBadge paymentId={paymentId} />;
+  if (status === "classified") {
+    return (
+      <ClassifiedInfo
+        paymentId={paymentId}
+        acts={acts}
+        isSplit={isSplitPayment(classificationReason)}
+      />
+    );
+  }
 
   const isActionable =
     status === "received" || status === "awaiting_review" || status === "in_queue";

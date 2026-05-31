@@ -136,7 +136,11 @@ Phase 0 setup (S0) was the bootstrap — no OpenSpec change required.
   scaffold lives in `lib/i18n/` for Phase 1+.
 - **Act immutability** (BC-LEGAL-05). Once an Act row exists, snapshots
   are frozen. Re-issuing produces a new act with a new number.
-- **One payment ↔ one act** (D-007). No bundling, no split.
+- **Payment ↔ Act invariant** (D-007 / D-042). Automatic classification stays
+  strictly 1:1 — bundled payments go to the queue, never auto-split. A payment
+  MAY be **manually** split into several acts (`payment-split`), all referencing
+  the one real payment, governed by `Σ(act.amount) == payment.amount`. No
+  fabricated payments, no automatic splitting.
 - **Catch-all tariff invariant** (D-018). Deletion of the only catch-all
   tariff must be blocked at the domain layer.
 - **FK ON DELETE RESTRICT** on Client/Contract/Payment/Act chain (D-025).

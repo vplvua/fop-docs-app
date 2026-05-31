@@ -29,10 +29,10 @@ export interface ContractClient {
   contractNumber: string;
 }
 
-const INPUT_CLASS =
+export const INPUT_CLASS =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
-const MONTHS = [
+export const MONTHS = [
   "Січень",
   "Лютий",
   "Березень",
@@ -103,7 +103,7 @@ function ClientOption({
  * name and the EDRPOU/РНОКПП (numeric ids matched as text, per our list-search
  * convention). Locked to read-only text in edit mode, where the client is fixed.
  */
-function ClientCombobox({
+export function ClientCombobox({
   clients,
   value,
   onChange,
