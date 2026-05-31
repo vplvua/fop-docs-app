@@ -52,13 +52,14 @@ describe("actToCreateDocumentPayload", () => {
   });
 
   it("uses act date and number in metadata", () => {
-    const act = makeAct({ actDate: "2026-05-31", number: "№5/2" });
+    const act = makeAct({ actDate: "2026-05-31", number: "05/2026/2" });
     const payload = actToCreateDocumentPayload(act, "base64");
 
     expect(payload.date).toBe("2026-05-31");
-    expect(payload.number).toBe("№5/2");
-    expect(payload.title).toBe("Акт №5/2 від 2026-05-31");
-    expect(payload.filename).toBe("act_№5/2_2026-05-31.pdf");
+    expect(payload.number).toBe("05/2026/2");
+    expect(payload.title).toBe("Акт 05/2026/2 від 2026-05-31");
+    // act_<contract>_<YYYY-MM>[_N].pdf — contract 556770, 2nd act of the month.
+    expect(payload.filename).toBe("act_556770_2026-05_2.pdf");
   });
 
   it("sends amount in kopiykas from the stored paid total", () => {

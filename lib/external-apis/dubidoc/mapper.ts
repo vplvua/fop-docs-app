@@ -1,3 +1,4 @@
+import { actPdfFilename } from "@/lib/acts/pdf-filename";
 import type { Act } from "@/lib/db/schema/acts";
 
 import type { CreateDocumentRequest } from "./types";
@@ -16,7 +17,7 @@ export function actToCreateDocumentPayload(act: Act, pdfBase64: string): CreateD
 
   return {
     file: pdfBase64,
-    filename: `act_${act.number}_${act.actDate}.pdf`,
+    filename: actPdfFilename(act),
     title: `Акт ${act.number} від ${act.actDate}`,
     date: act.actDate,
     number: act.number,

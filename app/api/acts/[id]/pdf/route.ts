@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
+import { actPdfFilename } from "@/lib/acts/pdf-filename";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { logger } from "@/lib/logging";
@@ -22,7 +23,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   try {
     const pdfBuffer = await renderActPdf(act);
-    const filename = `act-${act.number}-${act.actDate}.pdf`;
+    const filename = actPdfFilename(act);
 
     return new Response(new Uint8Array(pdfBuffer), {
       headers: {
