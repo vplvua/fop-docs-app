@@ -1,15 +1,15 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, type ChangeEvent } from "react";
 
-function buildHref(base: URLSearchParams, key: string, value: string | null): string {
-  const sp = new URLSearchParams(base.toString());
-  if (value) sp.set(key, value);
-  else sp.delete(key);
-  return `/clients?${sp.toString()}`;
-}
+import {
+  ActiveFilters,
+  ResetFilters,
+  SearchInput,
+  type FilterChip,
+} from "@/app/components/data-table";
+
+import { buildFilterHref } from "../build-filter-href";
+
+type Params = Record<string, string | undefined>;
 
 function FilterChip({ label, href, active }: { label: string; href: string; active: boolean }) {
   return (
@@ -26,104 +26,99 @@ function FilterChip({ label, href, active }: { label: string; href: string; acti
   );
 }
 
-function SearchInput({ defaultValue }: { defaultValue: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const SOURCE_LABELS: Record<string, string> = { moeosbb: "Моє ОСББ", local: "Локальні" };
+const EDO_LABELS: Record<string, string> = { dubidoc: "Дубідок", vchasno_external: "Вчасно" };
+const RESET_KEYS = ["q", "status", "source", "edo"] as const;
 
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const sp = new URLSearchParams(searchParams.toString());
-      const v = e.target.value.trim();
-      if (v) sp.set("q", v);
-      else sp.delete("q");
-      router.push(`/clients?${sp.toString()}`);
-    },
-    [router, searchParams],
-  );
-
-  return (
-    <input
-      type="search"
-      defaultValue={defaultValue}
-      placeholder="Пошук за назвою або ЄДРПОУ…"
-      aria-label="Пошук клієнтів"
-      className="h-9 w-64 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      onChange={handleChange}
-    />
-  );
-}
-
-interface Params {
-  q?: string | undefined;
-  status?: string | undefined;
-  source?: string | undefined;
-  edo?: string | undefined;
+/** Removable chips for the currently-applied search + non-default filters. */
+function activeChips(params: Params): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (params.q) chips.push({ keys: ["q"], label: `Пошук: «${params.q}»` });
+  if (params.status === "archive") chips.push({ keys: ["status"], label: "Статус: Архів" });
+  if (params.source && SOURCE_LABELS[params.source])
+    chips.push({ keys: ["source"], label: `Джерело: ${SOURCE_LABELS[params.source]}` });
+  if (params.edo && EDO_LABELS[params.edo])
+    chips.push({ keys: ["edo"], label: `ЕДО: ${EDO_LABELS[params.edo]}` });
+  return chips;
 }
 
 export function ClientsToolbar({ params }: { params: Params }) {
-  const sp = new URLSearchParams();
-  if (params.q) sp.set("q", params.q);
-  if (params.status) sp.set("status", params.status);
-  if (params.source) sp.set("source", params.source);
-  if (params.edo) sp.set("edo", params.edo);
-
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <SearchInput defaultValue={params.q ?? ""} />
-      <StatusFilters sp={sp} active={params.status} />
-      <SourceFilters sp={sp} active={params.source} />
-      <EdoFilters sp={sp} active={params.edo} />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          placeholder="Пошук за назвою, ЄДРПОУ або MoeOSBB id…"
+          ariaLabel="Пошук клієнтів"
+          className="w-72"
+        />
+        <StatusFilters params={params} />
+        <SourceFilters params={params} />
+        <EdoFilters params={params} />
+        <ResetFilters keys={RESET_KEYS} />
+      </div>
+      <ActiveFilters chips={activeChips(params)} />
     </div>
   );
 }
 
-function StatusFilters({ sp, active }: { sp: URLSearchParams; active?: string | undefined }) {
+function StatusFilters({ params }: { params: Params }) {
+  const active = params.status;
   return (
     <div className="flex gap-1.5">
       <FilterChip
         label="Активні"
-        href={buildHref(sp, "status", null)}
+        href={buildFilterHref(params, "/clients", "status", null)}
         active={active !== "archive"}
       />
       <FilterChip
         label="Архів"
-        href={buildHref(sp, "status", "archive")}
+        href={buildFilterHref(params, "/clients", "status", "archive")}
         active={active === "archive"}
       />
     </div>
   );
 }
 
-function SourceFilters({ sp, active }: { sp: URLSearchParams; active?: string | undefined }) {
+function SourceFilters({ params }: { params: Params }) {
+  const active = params.source;
   return (
     <div className="flex gap-1.5">
-      <FilterChip label="Усі" href={buildHref(sp, "source", null)} active={!active} />
+      <FilterChip
+        label="Усі"
+        href={buildFilterHref(params, "/clients", "source", null)}
+        active={!active}
+      />
       <FilterChip
         label="Моє ОСББ"
-        href={buildHref(sp, "source", "moeosbb")}
+        href={buildFilterHref(params, "/clients", "source", "moeosbb")}
         active={active === "moeosbb"}
       />
       <FilterChip
         label="Локальні"
-        href={buildHref(sp, "source", "local")}
+        href={buildFilterHref(params, "/clients", "source", "local")}
         active={active === "local"}
       />
     </div>
   );
 }
 
-function EdoFilters({ sp, active }: { sp: URLSearchParams; active?: string | undefined }) {
+function EdoFilters({ params }: { params: Params }) {
+  const active = params.edo;
   return (
     <div className="flex gap-1.5">
-      <FilterChip label="Усі ЕДО" href={buildHref(sp, "edo", null)} active={!active} />
+      <FilterChip
+        label="Усі ЕДО"
+        href={buildFilterHref(params, "/clients", "edo", null)}
+        active={!active}
+      />
       <FilterChip
         label="Дубідок"
-        href={buildHref(sp, "edo", "dubidoc")}
+        href={buildFilterHref(params, "/clients", "edo", "dubidoc")}
         active={active === "dubidoc"}
       />
       <FilterChip
         label="Вчасно"
-        href={buildHref(sp, "edo", "vchasno_external")}
+        href={buildFilterHref(params, "/clients", "edo", "vchasno_external")}
         active={active === "vchasno_external"}
       />
     </div>

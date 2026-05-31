@@ -4,7 +4,7 @@
 
 The `/clients` page SHALL display a table of clients with the following capabilities:
 
-- **Search** by `name` (case-insensitive substring), `legal_id` (prefix match), and `moeosbb_user_id` (exact, when the query is all digits). Search applies across the whole dataset under the active filters (see the `data-tables` debounced-search behavior).
+- **Search** by `name` (case-insensitive substring), `legal_id` (prefix match), and `moeosbb_user_id` (substring of the id cast to text, when the query is all digits). Search applies across the whole dataset under the active filters (see the `data-tables` debounced-search behavior).
 - **Filters** (all combinable):
   - Active (default) / Archive — based on `auto_act_disabled`.
   - Локальні / З "Моє ОСББ" — based on `moeosbb_user_id IS NULL` vs `IS NOT NULL`.
@@ -24,12 +24,12 @@ Covers: FR-CLI-09.
 #### Scenario: Search by legal_id
 
 - **WHEN** the admin types "12345678" into the search box
-- **THEN** clients whose `legal_id` starts with "12345678" SHALL be displayed (a clients whose `moeosbb_user_id` equals 12345678 SHALL also match)
+- **THEN** clients whose `legal_id` starts with "12345678" SHALL be displayed (a clients whose `moeosbb_user_id` contains "12345678" SHALL also match)
 
-#### Scenario: Search by MoeOSBB id
+#### Scenario: Search by partial MoeOSBB id
 
-- **WHEN** the admin types a client's MoeOSBB id into the search box
-- **THEN** the client linked to that `moeosbb_user_id` SHALL be displayed
+- **WHEN** the admin types part of a client's MoeOSBB id into the search box
+- **THEN** clients whose `moeosbb_user_id` contains that digit fragment SHALL be displayed (substring match, like the name search)
 
 #### Scenario: Filter by edo_provider
 

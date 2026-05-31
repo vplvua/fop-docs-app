@@ -1,18 +1,20 @@
 import { count, inArray } from "drizzle-orm";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { db } from "@/lib/db";
 import { payments } from "@/lib/db/schema/payments";
 
+import { NavLinks, NavLinksFallback, type NavLink } from "./nav-links";
 import { signOut } from "../(auth)/actions";
 
-const NAV_LINKS = [
-  { href: "/clients", label: "Клієнти" },
-  { href: "/payments", label: "Платежі" },
+const NAV_LINKS: NavLink[] = [
+  { href: "/clients", label: "Клієнти", remember: true },
+  { href: "/payments", label: "Платежі", remember: true },
   { href: "/queue", label: "Черга" },
-  { href: "/acts", label: "Акти" },
+  { href: "/acts", label: "Акти", remember: true },
   { href: "/settings/tariffs", label: "Налаштування" },
-] as const;
+];
 
 async function getQueueCount(): Promise<number> {
   const [row] = await db
@@ -32,22 +34,13 @@ export async function TopBar() {
           <Link href="/" className="text-sm font-semibold tracking-tight text-foreground">
             ФОП Документи
           </Link>
-          <nav className="flex items-center gap-4">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-                {link.href === "/queue" && queueCount > 0 ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
-                    {queueCount}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
-          </nav>
+          {/* Suspense keeps statically prerendered pages (e.g. `/`) from bailing
+              to CSR over `NavLinks`' `useSearchParams`; the fallback is the same
+              nav without restored memory. */}
+          {/* eslint-disable-next-line react-perf/jsx-no-jsx-as-prop -- Suspense fallback is an idiomatic element prop */}
+          <Suspense fallback={<NavLinksFallback links={NAV_LINKS} queueCount={queueCount} />}>
+            <NavLinks links={NAV_LINKS} queueCount={queueCount} />
+          </Suspense>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground" title={adminEmail}>

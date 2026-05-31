@@ -27,13 +27,13 @@ Custom `from`/`to`: either bound optional (open-ended range allowed). Invalid da
 
 ## Per-table search/`where` construction
 
-- **Clients:** `ilike(name, %q%)` OR `ilike(legal_id, q%)` OR (`q` is all-digits → `moeosbb_user_id = q`). Filters: status/source/edo unchanged.
-- **Payments:** join `clients` on `payments.client_id`. Search = `ilike(payer_name, %q%)` OR `ilike(purpose, %q%)` OR (`q` all-digits → `clients.moeosbb_user_id = q`). The MoeOSBB-id branch only matches linked payments (`client_id` set); documented limitation. Date filter on `payment_date`.
-- **Acts:** join `clients` on `acts.client_id`. Search = `ilike(clients.name, %q%)` OR (`q` all-digits → `clients.moeosbb_user_id = q`) — replaces the `service_description` search. Filters: status (existing), `service_type` (new: sms/access), edo (existing), date on `act_date`.
+- **Clients:** `ilike(name, %q%)` OR `ilike(legal_id, q%)` OR (`q` is all-digits → `cast(moeosbb_user_id as text) like %q%`). Filters: status/source/edo unchanged.
+- **Payments:** join `clients` on `payments.client_id`. Search = `ilike(payer_name, %q%)` OR `ilike(purpose, %q%)` OR (`q` all-digits → `cast(clients.moeosbb_user_id as text) like %q%`). The MoeOSBB-id branch only matches linked payments (`client_id` set); documented limitation. Date filter on `payment_date`.
+- **Acts:** join `clients` on `acts.client_id`. Search = `ilike(clients.name, %q%)` OR (`q` all-digits → `cast(clients.moeosbb_user_id as text) like %q%`) — replaces the `service_description` search. Filters: status (existing), `service_type` (new: sms/access), edo (existing), date on `act_date`.
 
 **Decision (acts search target):** match the **current** client via join, not the frozen `client_snapshot.name`. Rationale: consistent with MoeOSBB-id search (id lives only on `clients`), and the operator searches by who the client _is now_. Acts whose `client_id` is unset would not match by name — acceptable (acts always carry a client).
 
-MoeOSBB-id detection: treat `q` as an id query when it is all digits; run it as an additional OR branch so a numeric string still also matches names/purpose where relevant.
+MoeOSBB-id detection: treat `q` as an id query when it is all digits; run it as an additional OR branch so a numeric string still also matches names/purpose where relevant. The id branch is a substring match on the id cast to text (`cast(... as text) like %q%`), so partial ids behave like the name search rather than requiring an exact value.
 
 ## Debounced search component
 

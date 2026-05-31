@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import Link from "next/link";
 
 import { DataTablePage, Pagination } from "@/app/components/data-table";
@@ -49,7 +49,13 @@ export default async function ClientsPage({ searchParams }: Props) {
 
   if (params.q) {
     const q = params.q;
-    conditions.push(sql`(${ilike(clients.name, `%${q}%`)} OR ${ilike(clients.legalId, `${q}%`)})`);
+    const branches = [ilike(clients.name, `%${q}%`), ilike(clients.legalId, `${q}%`)];
+    // All-digit query also matches a MoeOSBB id by substring (cast to text), so
+    // partial ids behave like the name search.
+    if (/^\d+$/u.test(q))
+      branches.push(sql`cast(${clients.moeosbbUserId} as text) like ${`%${q}%`}`);
+    const search = or(...branches);
+    if (search) conditions.push(search);
   }
 
   const where = and(...conditions);

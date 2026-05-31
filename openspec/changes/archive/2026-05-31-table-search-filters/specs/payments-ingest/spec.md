@@ -2,11 +2,11 @@
 
 ### Requirement: Payments list page
 
-The system SHALL provide a `/payments` page displaying payments in a table with columns: payment_date, amount (thousands-separated, currency unit in the header), purpose (truncated), payer_name, status (badge), created_at. The list SHALL support:
+The system SHALL provide a `/payments` page displaying payments in a table with columns: payment_date, amount (thousands-separated, currency unit in the header), purpose (truncated), payer_name, the linked client's `moeosbb_user_id` (or "—" when unlinked), status (badge). The list SHALL support:
 
 - **Status** filter (existing).
 - **Date-range** filter on `payment_date` — presets (today / this & last week / this & last month / this & last quarter) plus a custom from/to range, default no date filter, per the `data-tables` date-range behavior.
-- **Text search** on `payer_name` and `purpose` (case-insensitive substring), and on the linked client's `moeosbb_user_id` (exact, when the query is all digits) via `payments.client_id → clients`. Searching by MoeOSBB id matches only payments already linked to a client (`client_id` set during classification); unlinked payments are not surfaced by id.
+- **Text search** on `payer_name` and `purpose` (case-insensitive substring), and on the linked client's `moeosbb_user_id` (substring of the id cast to text, when the query is all digits) via `payments.client_id → clients`. Searching by MoeOSBB id matches only payments already linked to a client (`client_id` set during classification); unlinked payments are not surfaced by id.
 
 Search and filters apply across the whole dataset and combine with each other, with server-side pagination and sorting per `data-tables`.
 
