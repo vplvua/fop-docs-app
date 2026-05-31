@@ -306,28 +306,24 @@ export function SplitForm({
 
   const onPatch = useCallback(
     (index: number, patch: Partial<LineState>) => {
+      const current = lines[index];
       setLines((prev) => prev.map((cur, i) => (i === index ? patchLine(cur, patch) : cur)));
-      if (HINT_FIELDS.some((f) => f in patch)) {
-        setLines((prev) => {
-          const target = prev[index];
-          if (target) void applyHint(index, target);
-          return prev;
-        });
+      // Fire the hint from the event-handler scope (never inside a setLines
+      // updater) — invoking a server action during render touches the Router.
+      if (current && HINT_FIELDS.some((f) => f in patch)) {
+        void applyHint(index, { ...current, ...patch });
       }
     },
-    [applyHint],
+    [lines, applyHint],
   );
 
   const onClient = useCallback(
     (index: number, clientId: string) => {
-      setLines((prev) => {
-        const updated = prev.map((cur, i) => (i === index ? { ...cur, clientId } : cur));
-        const target = updated[index];
-        if (target) void applyHint(index, target);
-        return updated;
-      });
+      const current = lines[index];
+      setLines((prev) => prev.map((cur, i) => (i === index ? { ...cur, clientId } : cur)));
+      if (current) void applyHint(index, { ...current, clientId });
     },
-    [applyHint],
+    [lines, applyHint],
   );
 
   const onRemove = useCallback((index: number) => {
