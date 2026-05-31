@@ -1,4 +1,4 @@
-import { asc, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
@@ -16,14 +16,17 @@ export const metadata = { title: "Створити акт вручну · ФОП
  * the PDF preamble requires a `contract_snapshot` (D5).
  */
 async function loadContractClients(): Promise<ContractClient[]> {
-  const contractRows = await db.select({ clientId: contracts.clientId }).from(contracts);
-  const clientIds = [...new Set(contractRows.map((r) => r.clientId))];
-  if (clientIds.length === 0) return [];
-
+  // Inner-join the contract so the picker can also search by contract number;
+  // the unique index on contracts.client_id guarantees at most one row per client.
   const rows = await db
-    .select({ id: clients.id, name: clients.name, legalId: clients.legalId })
-    .from(clients)
-    .where(inArray(clients.id, clientIds))
+    .select({
+      id: clients.id,
+      name: clients.name,
+      legalId: clients.legalId,
+      contractNumber: contracts.number,
+    })
+    .from(contracts)
+    .innerJoin(clients, eq(clients.id, contracts.clientId))
     .orderBy(asc(clients.name));
   return rows;
 }

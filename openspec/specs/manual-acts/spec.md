@@ -3,12 +3,10 @@
 ## Purpose
 
 Manual act creation — an admin path to create an act for money that did not arrive through the automatic PrivatBank classification flow (a different bank, or a pre-launch payment). The admin chooses the client, act period, service, quantity and amount; the system records a backing manual payment and reuses the existing numbering, snapshots, PDF and EDO pipeline. Covers FR-MACT-01..07.
-
 ## Requirements
-
 ### Requirement: Manual act creation form
 
-The system SHALL provide an admin page «Створити акт вручну» that collects: a client (selectable only from clients that have a contract), the act period (a month + year), a service type (`access` or `sms`), a quantity, and an amount. On selecting a client and service the system SHALL pre-fill the unit price from the effective tariff (`resolveAccessPrice` / `resolveSmsPrice`) and a default quantity as a hint; the admin SHALL be able to override quantity and amount. The form SHALL be server-validated (Zod) before any act is created.
+The system SHALL provide an admin page «Створити акт вручну» that collects: a client (selectable only from clients that have a contract), the act period (a month + year), a service type (`access` or `sms`), a quantity, and an amount. The client selector SHALL be a searchable combobox that filters its options by a case-insensitive substring match over the client name, the EDRPOU/РНОКПП (matched as text), and the contract number; it SHALL still list only clients that have a contract. On selecting a client and service the system SHALL pre-fill the unit price from the effective tariff (`resolveAccessPrice` / `resolveSmsPrice`) and a default quantity as a hint; the admin SHALL be able to override quantity and amount. The form SHALL be server-validated (Zod) before any act is created.
 
 Covers: FR-MACT-01, FR-MACT-02.
 
@@ -16,6 +14,11 @@ Covers: FR-MACT-01, FR-MACT-02.
 
 - **WHEN** the admin opens the manual act form
 - **THEN** the client selector SHALL list only clients that have a contract, because the PDF requires `contract_snapshot`
+
+#### Scenario: Client picker is searchable by name, EDRPOU and contract number
+
+- **WHEN** the admin types a query into the client picker's search box
+- **THEN** the picker SHALL show only clients whose name, EDRPOU/РНОКПП, or contract number contains that query as a case-insensitive substring, and selecting a result SHALL set it as the chosen client
 
 #### Scenario: Tariff pre-fills price as an overridable hint
 
@@ -152,3 +155,4 @@ Covers: FR-MACT-09.
 
 - **WHEN** deletion is attempted on a manual act with `status = 'sent_to_edo'` (dubidoc) or a signed DubiDoc act
 - **THEN** the system SHALL reject the deletion with a clear message
+

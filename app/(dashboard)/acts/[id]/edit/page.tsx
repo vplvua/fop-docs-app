@@ -7,6 +7,7 @@ import { extractMonth, extractYear } from "@/lib/acts/numbering";
 import { db } from "@/lib/db";
 import { acts, type Act } from "@/lib/db/schema/acts";
 import { clients } from "@/lib/db/schema/clients";
+import { contracts } from "@/lib/db/schema/contracts";
 import { payments } from "@/lib/db/schema/payments";
 
 import { PageContainer } from "@/app/components/page-container";
@@ -45,12 +46,20 @@ async function loadEditData(id: string) {
     return { redirectTo: `/acts/${id}` as const };
   }
 
-  const [client] = await db
-    .select({ id: clients.id, name: clients.name, legalId: clients.legalId })
+  const [clientRow] = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      legalId: clients.legalId,
+      contractNumber: contracts.number,
+    })
     .from(clients)
+    .leftJoin(contracts, eq(contracts.clientId, clients.id))
     .where(eq(clients.id, act.clientId))
     .limit(1);
-  if (!client) return null;
+  if (!clientRow) return null;
+  // The picker is read-only in edit mode, so a missing contract number is fine.
+  const client: ContractClient = { ...clientRow, contractNumber: clientRow.contractNumber ?? "" };
 
   return { act, client, bankLabel: row.bankLabel, paymentDate: row.paymentDate };
 }
