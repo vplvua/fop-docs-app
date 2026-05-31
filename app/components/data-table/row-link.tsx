@@ -18,17 +18,24 @@ export function RowLink({
   label,
   children,
   className,
+  tooltip,
 }: {
   href: string;
   label: string;
   children: ReactNode;
   className?: string;
+  /**
+   * Native tooltip text shown on row hover. The stretched overlay anchor covers
+   * every cell, so per-cell `title` attributes never fire — surface the full
+   * (otherwise truncated) text here instead.
+   */
+  tooltip?: string;
 }) {
   return (
     <tr className={cn("relative cursor-pointer transition-colors hover:bg-accent/50", className)}>
       {children}
       <td className="w-0 p-0">
-        <Link href={href} aria-label={label} className="absolute inset-0" />
+        <Link href={href} aria-label={label} title={tooltip} className="absolute inset-0" />
       </td>
     </tr>
   );

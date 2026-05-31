@@ -248,13 +248,16 @@ function PaymentsTable({ rows, sort, dir }: { rows: PaymentRow[]; sort: string; 
       </DataTableHead>
       <DataTableBody>
         {rows.map((p) => (
-          <RowLink key={p.id} href={`/payments/${p.id}`} label={`Платіж ${p.paymentDate}`}>
-            <Td>{p.paymentDate}</Td>
-            <Td className="tabular-nums">{formatAmount(p.amount)}</Td>
-            <Td className="max-w-xs truncate" title={p.purpose}>
-              {p.purpose}
-            </Td>
-            <Td>{p.payerName}</Td>
+          <RowLink
+            key={p.id}
+            href={`/payments/${p.id}`}
+            label={`Платіж ${p.paymentDate}`}
+            tooltip={`${p.payerName}\n${p.purpose}`}
+          >
+            <Td className="whitespace-nowrap">{p.paymentDate}</Td>
+            <Td className="whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</Td>
+            <Td className="max-w-xs truncate">{p.purpose}</Td>
+            <Td className="max-w-xs truncate">{p.payerName}</Td>
             <Td className="tabular-nums text-muted-foreground">{p.moeosbbUserId ?? "—"}</Td>
             <Td>
               <span

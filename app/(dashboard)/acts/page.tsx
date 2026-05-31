@@ -326,12 +326,10 @@ function ActRow({ act }: { act: ActWithMoeosbb }) {
   const client = act.clientSnapshot as ClientSnapshot;
 
   return (
-    <RowLink href={`/acts/${act.id}`} label={`Акт ${act.number}`}>
-      <Td>{act.actDate}</Td>
-      <Td>{act.number}</Td>
-      <Td className="max-w-xs truncate" title={client.name}>
-        {client.name}
-      </Td>
+    <RowLink href={`/acts/${act.id}`} label={`Акт ${act.number}`} tooltip={client.name}>
+      <Td className="whitespace-nowrap">{act.actDate}</Td>
+      <Td className="whitespace-nowrap">{act.number}</Td>
+      <Td className="max-w-xs truncate">{client.name}</Td>
       <Td className="tabular-nums text-muted-foreground">{act.moeosbbUserId ?? "—"}</Td>
       <Td>{SERVICE_TYPE_LABELS[act.serviceType] ?? act.serviceType}</Td>
       <Td className="tabular-nums">{formatAmount(act.amount)}</Td>
