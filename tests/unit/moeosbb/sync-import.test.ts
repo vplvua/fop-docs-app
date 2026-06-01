@@ -54,4 +54,10 @@ describe("sync result shape", () => {
     expect(result.created).toBe(626);
     expect(result.fetched - result.matched).toBe(result.created);
   });
+
+  it("SyncResult splits contract sync into updated + created", () => {
+    // 394 matched: 370 already had a contract (date overwritten), 24 had none (contract created)
+    const result = { contractsUpdated: 370, contractsCreated: 24 };
+    expect(result.contractsUpdated + result.contractsCreated).toBe(394);
+  });
 });

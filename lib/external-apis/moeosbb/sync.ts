@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
@@ -15,14 +15,17 @@ export interface SyncResult {
   matched: number;
   updated: number;
   created: number;
-  /** Contract rows whose signed_date was updated from osbb_users.createdt. */
+  /** Existing contract rows whose signed_date was updated from osbb_users.createdt. */
   contractsUpdated: number;
+  /** Contract rows created for matched clients that had none (number = moeosbb_user_id). */
+  contractsCreated: number;
 }
 
 type ClientFields = ReturnType<typeof mapRemoteToClientFields>;
 
 interface ClientUpdate {
   localId: string;
+  moeosbbUserId: number;
   fields: ClientFields;
   /** Normalized osbb_users.createdt, or null when missing/unparseable. */
   contractDate: string | null;
@@ -49,6 +52,7 @@ function planSync(
     if (localId) {
       updates.push({
         localId,
+        moeosbbUserId: remoteId,
         fields: mapRemoteToClientFields(remote),
         contractDate: mapRemoteContractDate(remote),
       });
@@ -64,10 +68,62 @@ function countFulfilled(results: PromiseSettledResult<unknown>[]): number {
   return results.filter((r) => r.status === "fulfilled").length;
 }
 
+/**
+ * Sync the contract date for matched clients that carry a parseable createdt.
+ * A client that already has a contract gets only its `signed_date` overwritten
+ * (number/type/notes left intact); a client without one gets a new standard
+ * contract with `number = moeosbb_user_id` (same convention as the manual form).
+ */
+async function syncContracts(
+  datedUpdates: ClientUpdate[],
+): Promise<{ contractsUpdated: number; contractsCreated: number }> {
+  if (datedUpdates.length === 0) return { contractsUpdated: 0, contractsCreated: 0 };
+
+  const clientIds = datedUpdates.map((u) => u.localId);
+  const existingRows = await db
+    .select({ clientId: contracts.clientId })
+    .from(contracts)
+    .where(inArray(contracts.clientId, clientIds));
+  const hasContract = new Set(existingRows.map((r) => r.clientId));
+
+  const updateResults = await Promise.allSettled(
+    datedUpdates
+      .filter((u) => hasContract.has(u.localId))
+      .map((u) =>
+        db
+          .update(contracts)
+          .set({ signedDate: u.contractDate as string, updatedAt: sql`now()` })
+          .where(eq(contracts.clientId, u.localId)),
+      ),
+  );
+
+  const createResults = await Promise.allSettled(
+    datedUpdates
+      .filter((u) => !hasContract.has(u.localId))
+      .map((u) =>
+        db.insert(contracts).values({
+          clientId: u.localId,
+          number: String(u.moeosbbUserId),
+          signedDate: u.contractDate as string,
+        }),
+      ),
+  );
+
+  return {
+    contractsUpdated: countFulfilled(updateResults),
+    contractsCreated: countFulfilled(createResults),
+  };
+}
+
 async function applySync(
   updates: ClientUpdate[],
   inserts: ClientInsert[],
-): Promise<{ updated: number; created: number; contractsUpdated: number }> {
+): Promise<{
+  updated: number;
+  created: number;
+  contractsUpdated: number;
+  contractsCreated: number;
+}> {
   const updateResults = await Promise.allSettled(
     updates.map(({ localId, fields }) =>
       db
@@ -83,23 +139,15 @@ async function applySync(
     ),
   );
 
-  // Update the contract date (contracts.signed_date) for matched clients that
-  // both carry a parseable createdt and already have a contract row. New clients
-  // get no contract here — the contract number is required and not in MoeOSBB.
-  const contractUpdates = updates.filter((u) => u.contractDate !== null);
-  const contractResults = await Promise.allSettled(
-    contractUpdates.map(({ localId, contractDate }) =>
-      db
-        .update(contracts)
-        .set({ signedDate: contractDate as string, updatedAt: sql`now()` })
-        .where(eq(contracts.clientId, localId)),
-    ),
+  const { contractsUpdated, contractsCreated } = await syncContracts(
+    updates.filter((u) => u.contractDate !== null),
   );
 
   return {
     updated: countFulfilled(updateResults),
     created: countFulfilled(insertResults),
-    contractsUpdated: countFulfilled(contractResults),
+    contractsUpdated,
+    contractsCreated,
   };
 }
 
@@ -115,18 +163,29 @@ export async function runMoeosbbSync(singleMoeosbbId?: number): Promise<SyncResu
     const localByMoeosbbId = new Map(localClients.map((c) => [c.moeosbbUserId!, c.id]));
 
     const { updates, inserts } = planSync(remoteClients, localByMoeosbbId, singleMoeosbbId);
-    const { updated, created, contractsUpdated } = await applySync(updates, inserts);
+    const { updated, created, contractsUpdated, contractsCreated } = await applySync(
+      updates,
+      inserts,
+    );
 
     const matched = updates.length;
     const fetched = remoteClients.length;
 
     await recordIntegrationSuccess("moeosbb");
     logger.info(
-      { event: "moeosbb.sync_complete", fetched, matched, updated, created, contractsUpdated },
+      {
+        event: "moeosbb.sync_complete",
+        fetched,
+        matched,
+        updated,
+        created,
+        contractsUpdated,
+        contractsCreated,
+      },
       "moeosbb sync complete",
     );
 
-    return { fetched, matched, updated, created, contractsUpdated };
+    return { fetched, matched, updated, created, contractsUpdated, contractsCreated };
   } catch (err) {
     await recordIntegrationError("moeosbb", err);
     throw err;
