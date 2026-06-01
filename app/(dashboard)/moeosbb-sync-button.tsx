@@ -17,9 +17,9 @@ export function MoeosbbSyncButton() {
     setLoading(false);
 
     if (res.ok && res.result) {
-      const { fetched, matched, updated, created } = res.result;
+      const { fetched, matched, updated, created, contractsUpdated } = res.result;
       setMessage(
-        `Отримано ${String(fetched)}, знайдено ${String(matched)}, оновлено ${String(updated)}, створено ${String(created)}`,
+        `Отримано ${String(fetched)}, знайдено ${String(matched)}, оновлено ${String(updated)}, створено ${String(created)}, договорів оновлено ${String(contractsUpdated)}`,
       );
       router.refresh();
     } else {

@@ -6,6 +6,8 @@ export interface MoeosbbRemoteClient {
   osbb_bank: string;
   osbb_rr: string;
   contract_email: string;
+  /** osbb_users.createdt — contract date. MySQL DATE/DATETIME string; may be empty. */
+  createdt: string;
 }
 
 export interface MoeosbbSyncResponse {

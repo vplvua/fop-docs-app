@@ -13,6 +13,7 @@ const sampleClients: MoeosbbRemoteClient[] = [
     osbb_bank: "ПАТ «ТестБанк»",
     osbb_rr: "UA123456789012345678901234567",
     contract_email: "test@example.com",
+    createdt: "2023-05-12 10:30:00",
   },
   {
     id: "99",
@@ -22,6 +23,7 @@ const sampleClients: MoeosbbRemoteClient[] = [
     osbb_bank: "ПАТ «Інший Банк»",
     osbb_rr: "UA765432109876543210987654321",
     contract_email: "other@example.com",
+    createdt: "2024-01-03",
   },
 ];
 

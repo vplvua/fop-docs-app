@@ -12,6 +12,7 @@ describe("auto-creation field mapping", () => {
     osbb_bank: "ПАТ «НовоБанк»",
     osbb_rr: "UA111222333444555666777888999",
     contract_email: "new@example.com",
+    createdt: "2025-02-18",
   };
 
   it("maps remote fields for new client creation", () => {
