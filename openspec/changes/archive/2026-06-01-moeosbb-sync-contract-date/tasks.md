@@ -23,8 +23,8 @@
 ## 5. Quality gate & verification
 
 - [x] 5.1 `npm run typecheck` clean; `npm run lint` 0 errors; moeosbb unit suite green (31/31)
-- [ ] 5.2 Manual smoke on dev Neon branch once the PHP endpoint returns `createdt`: run sync → a matched client's `contracts.signed_date` updates to the upstream date, the dashboard shows «договорів оновлено N»; capture Real-behavior-proof for the PR (confirms the real `createdt` format matches the normalizer)
+- [x] 5.2 Manual smoke on prod (2026-06-01): sync ran, dashboard showed «договорів оновлено 370» (of 394 matched), real `createdt` format confirmed `2022-02-15 19:52:58` (matches the normalizer)
 
 ## 6. External prerequisite (out of repo, human-gated)
 
-- [ ] 6.1 Update the PHP sync endpoint (`api.php`) `SELECT` over `osbb_users` to include the `createdt` column in its JSON output. Until done, the sync no-ops on contract dates (safe). Cannot be performed by the agent (interactive on shared hosting)
+- [x] 6.1 PHP sync endpoint (`api.php`) `SELECT` over `osbb_users` updated to include `createdt`; verified returning it in the JSON (done by the operator on shared hosting)

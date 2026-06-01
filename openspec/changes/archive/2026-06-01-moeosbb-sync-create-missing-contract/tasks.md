@@ -17,4 +17,4 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Re-run «Синхронізувати Моє ОСББ зараз» on prod: the previously-skipped 24 clients get a contract (number = moeosbb_user_id, date = createdt); message shows «договорів створено 24»; open one to confirm the «Договір» tab now shows the contract with the synced date. Capture Real-behavior-proof
+- [x] 4.1 Re-ran «Синхронізувати Моє ОСББ зараз» on prod (2026-06-01): contracts updated/created for the matched clients (incl. the previously-skipped contract-less ones), confirmed by the operator
