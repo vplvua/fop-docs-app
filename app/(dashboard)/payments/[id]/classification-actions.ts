@@ -23,11 +23,17 @@ export async function classifyPaymentAction(
     .limit(1);
 
   if (!payment) return { ok: false, error: "Платіж не знайдено" };
+  // Already classified: a concurrent/background run (typical right after a
+  // fire-and-forget manual import) finished first. Treat as an idempotent
+  // success so the panel refreshes to the act instead of showing an error.
+  if (payment.status === "classified") return { ok: true };
   if (!RECLASSIFIABLE.has(payment.status)) {
     return { ok: false, error: `Платіж у статусі "${payment.status}" не може бути класифікований` };
   }
 
   try {
+    // `runClassification` returns null when the row raced to a terminal state
+    // under the lock — also a no-op success here.
     await runClassification(paymentId);
     return { ok: true };
   } catch (err) {
@@ -112,6 +118,7 @@ export async function linkPaymentClientAction(
   }
 
   try {
+    // null (payment already terminal under the lock) is a no-op success here.
     await runClassification(paymentId, clientId);
     logger.info({ event: "payment.client_linked", paymentId, clientId }, "payment client linked");
     return { ok: true };

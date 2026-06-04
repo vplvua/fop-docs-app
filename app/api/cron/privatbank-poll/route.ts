@@ -15,7 +15,8 @@ async function classifyInserted(ids: string[]): Promise<number> {
       );
     }
   }
-  return results.filter((r) => r.status === "fulfilled" && r.value.status === "classified").length;
+  // r.value is null when the payment was already terminal (no-op) — not counted.
+  return results.filter((r) => r.status === "fulfilled" && r.value?.status === "classified").length;
 }
 
 export async function GET(request: Request) {
