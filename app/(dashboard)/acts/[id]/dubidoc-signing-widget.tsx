@@ -124,7 +124,9 @@ export function DubidocSigningModal({ actId, edoDocId, onClose }: Props) {
       ref={dialogRef}
       onCancel={handleCancel}
       aria-label="Підписання документа в Дубідок"
-      className="w-full max-w-4xl overflow-hidden rounded-lg border border-border bg-card p-0 shadow-lg backdrop:bg-black/50"
+      // `m-auto` restores native modal centering — Tailwind preflight resets the
+      // dialog's UA `margin: auto` to 0, which otherwise pins it to the top-left.
+      className="m-auto w-[calc(100%-2rem)] max-w-4xl overflow-hidden rounded-lg border border-border bg-card p-0 shadow-lg backdrop:bg-black/50"
     >
       <div className="flex max-h-[90vh] flex-col">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
