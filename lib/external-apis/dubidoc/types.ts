@@ -31,6 +31,11 @@ export interface DocumentStatusResponse {
   refused?: boolean;
 }
 
+/** Response of `POST /documents/{id}/links` — a public, action-scoped URL. */
+export interface GenerateLinkResponse {
+  link: string;
+}
+
 export class DubiDocAuthError extends Error {
   constructor(message: string) {
     super(message);

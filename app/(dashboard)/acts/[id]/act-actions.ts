@@ -14,7 +14,12 @@ import { payments } from "@/lib/db/schema/payments";
 import { mapDubidocStatus } from "@/lib/edo/dubidoc-status";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { validateVchasnoTransition } from "@/lib/edo/vchasno-state";
-import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import {
+  deleteSigningLinks,
+  DubiDocApiError,
+  generateSigningLink,
+  getDocumentStatus,
+} from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
@@ -230,4 +235,70 @@ export async function refreshDubidocStatusAction(
     }
     return { ok: false, error: "Помилка оновлення статусу з Дубідок" };
   }
+}
+
+/**
+ * Generate a public DubiDoc signing URL for the FOP's own (first) signature so
+ * it can be embedded in an iframe modal. Guarded to acts that are sent to
+ * DubiDoc and still awaiting the FOP's signature (`sent_to_edo`). The DubiDoc
+ * access token never leaves the server — the client receives only the URL.
+ */
+export async function getSigningLinkAction(
+  actId: string,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const [act] = await db
+    .select({ edoDocId: acts.edoDocId, status: acts.status, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
+
+  if (!act) return { ok: false, error: "Акт не знайдено" };
+  if (act.edoProvider !== "dubidoc") return { ok: false, error: "Акт не є Дубідок" };
+  if (act.status !== "sent_to_edo") {
+    return { ok: false, error: "Підписати можна лише акт, що очікує вашого підпису" };
+  }
+  if (!act.edoDocId) return { ok: false, error: "Акт ще не відправлено" };
+
+  try {
+    const { link } = await generateSigningLink(act.edoDocId);
+    return { ok: true, url: link };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Невідома помилка";
+    logger.error(
+      { event: "edo.sign_link_error", actId, edoDocId: act.edoDocId, error: message },
+      "Failed to generate DubiDoc signing link",
+    );
+    return { ok: false, error: "Не вдалося отримати посилання для підпису" };
+  }
+}
+
+/**
+ * Revoke the public signing link(s) for an act after the FOP has signed (or
+ * dismissed the modal), minimizing the window the public URL is usable.
+ * Idempotent and best-effort: a failed DELETE is logged but never blocks the
+ * flow, since the link is short-lived and only the admin ever saw it.
+ */
+export async function revokeSigningLinkAction(
+  actId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const [act] = await db
+    .select({ edoDocId: acts.edoDocId, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
+
+  if (!act) return { ok: false, error: "Акт не знайдено" };
+  if (act.edoProvider !== "dubidoc" || !act.edoDocId) return { ok: true };
+
+  try {
+    await deleteSigningLinks(act.edoDocId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Невідома помилка";
+    logger.warn(
+      { event: "edo.sign_link_revoke_failed", actId, edoDocId: act.edoDocId, error: message },
+      "Failed to revoke DubiDoc signing link",
+    );
+  }
+
+  return { ok: true };
 }

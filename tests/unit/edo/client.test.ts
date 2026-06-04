@@ -3,7 +3,12 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDocument, getDocumentStatus } from "@/lib/external-apis/dubidoc/client";
+import {
+  createDocument,
+  deleteSigningLinks,
+  generateSigningLink,
+  getDocumentStatus,
+} from "@/lib/external-apis/dubidoc/client";
 import { DubiDocAuthError } from "@/lib/external-apis/dubidoc/types";
 import type { CreateDocumentRequest } from "@/lib/external-apis/dubidoc/types";
 
@@ -127,5 +132,85 @@ describe("getDocumentStatus", () => {
     const result = await getDocumentStatus("doc-123");
     expect(result.status).toBe("new");
     expect(attempt).toBe(2);
+  });
+});
+
+describe("generateSigningLink", () => {
+  beforeEach(() => {
+    vi.stubEnv("DUBIDOC_TOKEN", "test-token");
+    vi.stubEnv("DUBIDOC_ORGANIZATION_ID", "test-org");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns the public link and posts action=sign", async () => {
+    let body: unknown;
+    server.use(
+      http.post(`${API_URL}/doc-123/links`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ link: "https://my.dubidoc.com.ua/sign/abc" });
+      }),
+    );
+
+    const result = await generateSigningLink("doc-123");
+    expect(result.link).toBe("https://my.dubidoc.com.ua/sign/abc");
+    expect(body).toEqual({ action: "sign" });
+  });
+
+  it("throws DubiDocAuthError on 401", async () => {
+    server.use(
+      http.post(`${API_URL}/doc-123/links`, () => new HttpResponse(null, { status: 401 })),
+    );
+
+    await expect(generateSigningLink("doc-123")).rejects.toThrow(DubiDocAuthError);
+  });
+
+  it("retries on 500 and succeeds on second attempt", async () => {
+    let attempt = 0;
+    server.use(
+      http.post(`${API_URL}/doc-123/links`, () => {
+        attempt++;
+        if (attempt === 1) return new HttpResponse(null, { status: 500 });
+        return HttpResponse.json({ link: "https://my.dubidoc.com.ua/sign/xyz" });
+      }),
+    );
+
+    const result = await generateSigningLink("doc-123");
+    expect(result.link).toBe("https://my.dubidoc.com.ua/sign/xyz");
+    expect(attempt).toBe(2);
+  });
+});
+
+describe("deleteSigningLinks", () => {
+  beforeEach(() => {
+    vi.stubEnv("DUBIDOC_TOKEN", "test-token");
+    vi.stubEnv("DUBIDOC_ORGANIZATION_ID", "test-org");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("resolves on success", async () => {
+    let called = false;
+    server.use(
+      http.delete(`${API_URL}/doc-123/links`, () => {
+        called = true;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+
+    await expect(deleteSigningLinks("doc-123")).resolves.toBeUndefined();
+    expect(called).toBe(true);
+  });
+
+  it("throws DubiDocAuthError on 401", async () => {
+    server.use(
+      http.delete(`${API_URL}/doc-123/links`, () => new HttpResponse(null, { status: 401 })),
+    );
+
+    await expect(deleteSigningLinks("doc-123")).rejects.toThrow(DubiDocAuthError);
   });
 });

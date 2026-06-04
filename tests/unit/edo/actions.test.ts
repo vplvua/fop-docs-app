@@ -29,6 +29,8 @@ vi.mock("@/lib/edo/send-to-dubidoc", () => ({
 
 vi.mock("@/lib/external-apis/dubidoc", () => ({
   getDocumentStatus: vi.fn(),
+  generateSigningLink: vi.fn(),
+  deleteSigningLinks: vi.fn(),
 }));
 
 vi.mock("@/lib/edo/poll-dubidoc", () => ({
@@ -36,16 +38,24 @@ vi.mock("@/lib/edo/poll-dubidoc", () => ({
 }));
 
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
-import { getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import {
+  deleteSigningLinks,
+  generateSigningLink,
+  getDocumentStatus,
+} from "@/lib/external-apis/dubidoc";
 import {
   retryDubidocSendAction,
   refreshDubidocStatusAction,
+  getSigningLinkAction,
+  revokeSigningLinkAction,
 } from "@/app/(dashboard)/acts/[id]/act-actions";
 import { triggerDubidocPollAction } from "@/app/(dashboard)/dashboard-actions";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
 
 const mockSend = vi.mocked(sendActToDubidoc);
 const mockGetStatus = vi.mocked(getDocumentStatus);
+const mockGenerateLink = vi.mocked(generateSigningLink);
+const mockDeleteLinks = vi.mocked(deleteSigningLinks);
 const mockPoll = vi.mocked(pollDubidocStatuses);
 
 describe("retryDubidocSendAction", () => {
@@ -99,6 +109,108 @@ describe("refreshDubidocStatusAction", () => {
     mockGetStatus.mockResolvedValueOnce({ id: "doc-1", status: "signed" });
 
     const result = await refreshDubidocStatusAction("act-1");
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("getSigningLinkAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbResult.rows = [];
+  });
+
+  it("returns error when act not found", async () => {
+    mockDbResult.rows = [];
+    const result = await getSigningLinkAction("nonexistent");
+    expect(result.ok).toBe(false);
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+  });
+
+  it("returns error for non-dubidoc act", async () => {
+    mockDbResult.rows = [
+      { edoDocId: "doc-1", status: "sent_to_edo", edoProvider: "vchasno_external" },
+    ];
+    const result = await getSigningLinkAction("act-1");
+    expect(result.ok).toBe(false);
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+  });
+
+  it("returns error when status is not sent_to_edo", async () => {
+    mockDbResult.rows = [
+      { edoDocId: "doc-1", status: "waiting_for_client_sign", edoProvider: "dubidoc" },
+    ];
+    const result = await getSigningLinkAction("act-1");
+    expect(result.ok).toBe(false);
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+  });
+
+  it("returns error when edoDocId is missing", async () => {
+    mockDbResult.rows = [{ edoDocId: null, status: "sent_to_edo", edoProvider: "dubidoc" }];
+    const result = await getSigningLinkAction("act-1");
+    expect(result.ok).toBe(false);
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+  });
+
+  it("returns the signing url on success", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", status: "sent_to_edo", edoProvider: "dubidoc" }];
+    mockGenerateLink.mockResolvedValueOnce({ link: "https://my.dubidoc.com.ua/sign/abc" });
+
+    const result = await getSigningLinkAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(result.url).toBe("https://my.dubidoc.com.ua/sign/abc");
+    expect(mockGenerateLink).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("returns error when link generation throws", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", status: "sent_to_edo", edoProvider: "dubidoc" }];
+    mockGenerateLink.mockRejectedValueOnce(new Error("boom"));
+
+    const result = await getSigningLinkAction("act-1");
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("revokeSigningLinkAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbResult.rows = [];
+  });
+
+  it("returns error when act not found", async () => {
+    mockDbResult.rows = [];
+    const result = await revokeSigningLinkAction("nonexistent");
+    expect(result.ok).toBe(false);
+    expect(mockDeleteLinks).not.toHaveBeenCalled();
+  });
+
+  it("no-ops (ok) for non-dubidoc act", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "vchasno_external" }];
+    const result = await revokeSigningLinkAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockDeleteLinks).not.toHaveBeenCalled();
+  });
+
+  it("no-ops (ok) when edoDocId is missing", async () => {
+    mockDbResult.rows = [{ edoDocId: null, edoProvider: "dubidoc" }];
+    const result = await revokeSigningLinkAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockDeleteLinks).not.toHaveBeenCalled();
+  });
+
+  it("revokes the link and returns ok", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc" }];
+    mockDeleteLinks.mockResolvedValueOnce();
+
+    const result = await revokeSigningLinkAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockDeleteLinks).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("stays ok even when revoke throws (best-effort)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc" }];
+    mockDeleteLinks.mockRejectedValueOnce(new Error("network"));
+
+    const result = await revokeSigningLinkAction("act-1");
     expect(result.ok).toBe(true);
   });
 });

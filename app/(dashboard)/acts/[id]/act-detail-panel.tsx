@@ -15,6 +15,7 @@ import {
   MarkSignedButton,
   RefreshStatusButton,
   RetryDubidocButton,
+  SignInAppButton,
   UnmarkSignedButton,
 } from "./edo-controls";
 
@@ -207,6 +208,8 @@ export function ActDetailPanel({
   // Both pending DubiDoc states can still change → keep the refresh available.
   const isEdoPending = status === "sent_to_edo" || status === "waiting_for_client_sign";
   const showRefresh = isEdoPending && edoProvider === "dubidoc";
+  // FOP's own (first) signature is still pending only in `sent_to_edo`.
+  const showSignInApp = status === "sent_to_edo" && edoProvider === "dubidoc" && edoDocId;
   const showDubidocLink = edoProvider === "dubidoc" && edoDocId;
   const showMarkSigned = edoProvider === "vchasno_external" && status === "draft";
   const showUnmarkSigned = edoProvider === "vchasno_external" && status === "signed";
@@ -238,6 +241,7 @@ export function ActDetailPanel({
         {showRetry ? <RetryDubidocButton actId={actId} /> : null}
         {showRefresh ? <RefreshStatusButton actId={actId} /> : null}
         {isManual ? <DeleteActButton actId={actId} /> : null}
+        {showSignInApp && edoDocId ? <SignInAppButton actId={actId} edoDocId={edoDocId} /> : null}
         {showDubidocLink ? (
           <a
             href={`https://my.dubidoc.com.ua/documents/${edoDocId}`}

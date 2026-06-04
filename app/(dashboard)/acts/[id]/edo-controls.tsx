@@ -9,6 +9,7 @@ import {
   retryDubidocSendAction,
   unmarkActSignedAction,
 } from "./act-actions";
+import { DubidocSigningModal } from "./dubidoc-signing-widget";
 
 export function MarkSignedButton({ actId }: { actId: string }) {
   const router = useRouter();
@@ -99,6 +100,27 @@ export function RefreshStatusButton({ actId }: { actId: string }) {
     >
       {loading ? "Оновлення…" : "Оновити статус"}
     </button>
+  );
+}
+
+export function SignInAppButton({ actId, edoDocId }: { actId: string; edoDocId: string }) {
+  const [open, setOpen] = useState(false);
+  const handleOpen = useCallback(() => setOpen(true), []);
+  const handleClose = useCallback(() => setOpen(false), []);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleOpen}
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        Підписати тут
+      </button>
+      {open ? (
+        <DubidocSigningModal actId={actId} edoDocId={edoDocId} onClose={handleClose} />
+      ) : null}
+    </>
   );
 }
 

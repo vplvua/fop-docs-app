@@ -5,6 +5,7 @@ import type {
   CreateDocumentRequest,
   CreateDocumentResponse,
   DocumentStatusResponse,
+  GenerateLinkResponse,
 } from "./types";
 
 const RETRY_DELAYS = [1000, 5000, 30000];
@@ -113,6 +114,42 @@ export async function getDocumentStatus(docId: string): Promise<DocumentStatusRe
       headers: getAuthHeaders(),
     },
     "getDocumentStatus",
+    0,
+  );
+}
+
+/**
+ * Generate a public, action-scoped signing URL for a document. DubiDoc returns
+ * the same URL for repeated `action: "sign"` calls until the link is revoked.
+ * The returned link is meant to be embedded in an `<iframe>` so the FOP can sign
+ * without leaving the app.
+ */
+export async function generateSigningLink(docId: string): Promise<GenerateLinkResponse> {
+  return attemptRequest<GenerateLinkResponse>(
+    `${API_BASE}/documents/${docId}/links`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ action: "sign" }),
+    },
+    "generateSigningLink",
+    0,
+  );
+}
+
+/**
+ * Revoke ALL public links for a document (DubiDoc has no per-action delete).
+ * Called right after the FOP signs to minimize the window the public sign URL
+ * is usable. Safe to call when no links exist.
+ */
+export async function deleteSigningLinks(docId: string): Promise<void> {
+  await attemptRequest<{ success: boolean }>(
+    `${API_BASE}/documents/${docId}/links`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+    "deleteSigningLinks",
     0,
   );
 }

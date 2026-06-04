@@ -1,6 +1,10 @@
 import { http, HttpResponse } from "msw";
 
-import type { CreateDocumentResponse, DocumentStatusResponse } from "@/lib/external-apis/dubidoc";
+import type {
+  CreateDocumentResponse,
+  DocumentStatusResponse,
+  GenerateLinkResponse,
+} from "@/lib/external-apis/dubidoc";
 
 let mockDocStatus: DocumentStatusResponse = {
   id: "mock-doc-001",
@@ -25,5 +29,16 @@ export const dubidocHandlers = [
 
   http.get("https://api.dubidoc.com.ua/api/v1/documents/:id", () =>
     HttpResponse.json(mockDocStatus),
+  ),
+
+  http.post("https://api.dubidoc.com.ua/api/v1/documents/:id/links", ({ params }) => {
+    const response: GenerateLinkResponse = {
+      link: `https://my.dubidoc.com.ua/sign/${String(params.id)}`,
+    };
+    return HttpResponse.json(response);
+  }),
+
+  http.delete("https://api.dubidoc.com.ua/api/v1/documents/:id/links", () =>
+    HttpResponse.json({ success: true }),
   ),
 ];
