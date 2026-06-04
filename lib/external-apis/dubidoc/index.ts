@@ -3,6 +3,7 @@ export {
   deleteSigningLinks,
   generateSigningLink,
   getDocumentStatus,
+  sendDocument,
 } from "./client";
 export { actToCreateDocumentPayload } from "./mapper";
 export type {

@@ -3,11 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  getSigningLinkAction,
-  refreshDubidocStatusAction,
-  revokeSigningLinkAction,
-} from "./act-actions";
+import { finalizeInAppSigningAction, getSigningLinkAction } from "./act-actions";
 
 interface Props {
   actId: string;
@@ -103,9 +99,9 @@ export function DubidocSigningModal({ actId, edoDocId, onClose }: Props) {
 
   const handleClose = useCallback(async () => {
     setClosing(true);
-    // Best-effort revoke + status sync; both tolerate failure server-side.
-    await revokeSigningLinkAction(actId);
-    await refreshDubidocStatusAction(actId);
+    // Forwards the freshly-signed doc to the client, revokes the public link,
+    // and refreshes the act status — all best-effort server-side.
+    await finalizeInAppSigningAction(actId);
     router.refresh();
     onClose();
   }, [actId, onClose, router]);

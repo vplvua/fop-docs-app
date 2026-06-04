@@ -8,6 +8,7 @@ import {
   deleteSigningLinks,
   generateSigningLink,
   getDocumentStatus,
+  sendDocument,
 } from "@/lib/external-apis/dubidoc/client";
 import { DubiDocAuthError } from "@/lib/external-apis/dubidoc/types";
 import type { CreateDocumentRequest } from "@/lib/external-apis/dubidoc/types";
@@ -212,5 +213,35 @@ describe("deleteSigningLinks", () => {
     );
 
     await expect(deleteSigningLinks("doc-123")).rejects.toThrow(DubiDocAuthError);
+  });
+});
+
+describe("sendDocument", () => {
+  beforeEach(() => {
+    vi.stubEnv("DUBIDOC_TOKEN", "test-token");
+    vi.stubEnv("DUBIDOC_ORGANIZATION_ID", "test-org");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("posts an empty JSON object and resolves on success", async () => {
+    let body: unknown;
+    server.use(
+      http.post(`${API_URL}/doc-123/send`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ success: true });
+      }),
+    );
+
+    await expect(sendDocument("doc-123")).resolves.toBeUndefined();
+    expect(body).toEqual({});
+  });
+
+  it("throws DubiDocAuthError on 401", async () => {
+    server.use(http.post(`${API_URL}/doc-123/send`, () => new HttpResponse(null, { status: 401 })));
+
+    await expect(sendDocument("doc-123")).rejects.toThrow(DubiDocAuthError);
   });
 });

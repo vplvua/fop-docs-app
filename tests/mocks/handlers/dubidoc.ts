@@ -41,4 +41,8 @@ export const dubidocHandlers = [
   http.delete("https://api.dubidoc.com.ua/api/v1/documents/:id/links", () =>
     HttpResponse.json({ success: true }),
   ),
+
+  http.post("https://api.dubidoc.com.ua/api/v1/documents/:id/send", () =>
+    HttpResponse.json({ success: true }),
+  ),
 ];

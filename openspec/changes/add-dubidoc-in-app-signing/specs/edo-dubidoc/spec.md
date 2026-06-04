@@ -37,24 +37,33 @@ Covers: in-app signing (підхід A — iframe + public sign-link).
 
 ### Requirement: Revoke public sign link and refresh status after signing
 
-When the signing modal is closed (after the FOP has signed or dismissed it), the system SHALL revoke the public signing link via `DELETE /api/v1/documents/{edo_doc_id}/links`, then refresh the act status using the existing DubiDoc status-refresh path (`refreshDubidocStatusAction`, which maps `new → waiting_for_client_sign → signed`), and re-render the act detail page. No new status-mapping logic SHALL be introduced. If the FOP signed, the act SHALL transition `sent_to_edo → waiting_for_client_sign`; if the FOP closed the modal without signing, the act SHALL remain `sent_to_edo` and a subsequent «Підписати тут» click SHALL generate a fresh signing link.
+When the signing modal is closed (after the FOP has signed or dismissed it), the system SHALL run a finalize step that: (1) forwards the document to the client when needed, (2) revokes the public signing link via `DELETE /api/v1/documents/{edo_doc_id}/links`, and (3) refreshes the act status, then re-renders the act detail page.
 
-Covers: link revocation + status sync after in-app signing.
+Signing via the public link applies ONLY the FOP's (owner) signature — unlike the website's "Підписати та надіслати", it does NOT advance the sequential route. Therefore, when the document status shows the FOP has signed but the flow has not advanced (document `state = new` and org-relative `status = signed`), the finalize step SHALL call `POST /api/v1/documents/{edo_doc_id}/send` to forward the document to the client (`isSignatureRequired` participant), so the client receives the signing request. Forwarding and link revocation SHALL be best-effort (logged, never blocking); the status refresh result is authoritative.
 
-#### Scenario: Successful sign advances status and revokes link
+If the FOP signed, the act SHALL transition `sent_to_edo → waiting_for_client_sign`; if the FOP closed the modal without signing, the act SHALL remain `sent_to_edo` and a subsequent «Підписати тут» click SHALL generate a fresh signing link.
 
-- **WHEN** the FOP completes signing in the iframe and closes the modal
-- **THEN** the system SHALL call `DELETE /documents/{edo_doc_id}/links`, run the existing status refresh, and the act SHALL transition from `sent_to_edo` to `waiting_for_client_sign`
+Covers: forward-to-client + link revocation + status sync after in-app signing.
 
-#### Scenario: Closing without signing leaves act recoverable
+#### Scenario: Sign forwards to client, revokes link, advances status
 
-- **WHEN** the FOP closes the modal without signing
-- **THEN** the link SHALL be revoked, the act SHALL remain `sent_to_edo`, and clicking «Підписати тут» again SHALL generate a new signing link
+- **WHEN** the FOP completes signing in the iframe and closes the modal, and the document is `state = new` with org `status = signed`
+- **THEN** the system SHALL call `POST /documents/{edo_doc_id}/send`, then `DELETE /documents/{edo_doc_id}/links`, then refresh status, and the act SHALL transition from `sent_to_edo` to `waiting_for_client_sign`
 
-#### Scenario: Status mapping is reused, not duplicated
+#### Scenario: No forward when the FOP has not signed
 
-- **WHEN** the status is refreshed after signing
-- **THEN** the system SHALL use the existing `refreshDubidocStatusAction` / `mapDubidocStatus` path and SHALL NOT add a separate status-mapping implementation
+- **WHEN** the modal is closed while the document is `state = new` with org `status = new` (FOP has not signed)
+- **THEN** the system SHALL NOT call `/send`, and the act SHALL remain `sent_to_edo`
+
+#### Scenario: No forward when the document is already fully signed
+
+- **WHEN** the modal is closed while the document is `state = signed`
+- **THEN** the system SHALL NOT call `/send`, and the act SHALL be `signed`
+
+#### Scenario: Forwarding failure does not block finalize
+
+- **WHEN** `/send` fails during finalize
+- **THEN** the failure SHALL be logged, the link SHALL still be revoked, and the status refresh SHALL still run
 
 ### Requirement: Upload-to-DubiDoc flow is unchanged
 
@@ -71,3 +80,60 @@ Covers: non-regression of the upload path.
 
 - **WHEN** an act has been sent to DubiDoc (`sent_to_edo`) and the FOP signs via the modal
 - **THEN** the act SHALL advance to `waiting_for_client_sign` without any change to the original send logic
+
+## MODIFIED Requirements
+
+### Requirement: DubiDoc status mapping
+
+The polling/status response SHALL be mapped to act status using the **document-level `state`** (`new → sent → signed`) as the authoritative signal, because the top-level `status` field is computed **relative to the authenticated organization** (the FOP) — once the FOP signs, `status` reads `signed` even though the client has not, which would otherwise mark a half-signed act as fully `signed`.
+
+Mapping (when `state` is present):
+
+- `state = "signed"` → `Act.status = signed` (all parties signed).
+- `archived = true` → `Act.status = deleted` and `Payment.act_id = NULL`.
+- `refused = true` → `Act.edo_status = "refused"` (Act.status unchanged).
+- `state = "sent"` → `Act.status = waiting_for_client_sign` (forwarded to the client, awaiting their signature).
+- `state = "new"` and org `status ∈ { "signed", "waiting_for_contractor_sign" }` → `Act.status = waiting_for_client_sign` (the FOP has signed; the flow has not advanced yet).
+- `state = "new"` and org `status = "new"` → `Act.status = sent_to_edo` (awaiting the FOP's signature).
+- all other values → `Act.edo_status = <raw status value>` (Act.status unchanged).
+
+When `state` is ABSENT (older responses), the legacy org-relative `status` mapping SHALL apply: `signed → signed`; `archived → deleted`; `refused → edo_status`; `new → sent_to_edo`; `waiting_for_contractor_sign → waiting_for_client_sign`; otherwise raw `edo_status`.
+
+`Act.edo_status` is `text` type, not enum. The same mapping SHALL be applied by both the polling cron and the manual refresh, via a single shared mapper.
+
+Covers: FR-EDO-06, FR-EDO-07.
+
+#### Scenario: Both parties signed (document-level state)
+
+- **WHEN** the status response is `{ state: "signed" }` for an act
+- **THEN** `Act.status` SHALL be updated to `signed`
+
+#### Scenario: FOP signed but flow not advanced is NOT fully signed
+
+- **WHEN** the status response is `{ state: "new", status: "signed" }` (org-relative `signed`)
+- **THEN** `Act.status` SHALL be `waiting_for_client_sign`, NOT `signed`
+
+#### Scenario: Forwarded to the client
+
+- **WHEN** the status response is `{ state: "sent" }` for an act
+- **THEN** `Act.status` SHALL be `waiting_for_client_sign` and `Act.edo_status` SHALL be `"sent"`
+
+#### Scenario: Just sent, awaiting the FOP
+
+- **WHEN** the status response is `{ state: "new", status: "new" }` for an act
+- **THEN** `Act.status` SHALL remain `sent_to_edo` and `Act.edo_status` SHALL be `"new"`
+
+#### Scenario: Document archived in DubiDoc
+
+- **WHEN** the status response includes `{ archived: true }` for an unfinished act
+- **THEN** `Act.status` SHALL be updated to `deleted`, and `Payment.act_id` SHALL be set to `NULL`
+
+#### Scenario: Document refused in DubiDoc
+
+- **WHEN** the status response includes `{ refused: true }` for an act
+- **THEN** `Act.edo_status` SHALL be `"refused"`, `Act.status` SHALL remain unchanged
+
+#### Scenario: Legacy response without document-level state
+
+- **WHEN** a status response has no `state` field and `{ status: "signed" }`
+- **THEN** the legacy mapping SHALL apply and `Act.status` SHALL be `signed`

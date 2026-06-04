@@ -56,4 +56,55 @@ describe("mapDubidocStatus", () => {
       edoStatus: "archived",
     });
   });
+
+  describe("document-level state (authoritative)", () => {
+    it("state=signed → signed (all parties)", () => {
+      expect(mapDubidocStatus({ id: "d", status: "signed", state: "signed" })).toEqual({
+        status: "signed",
+        edoStatus: "signed",
+      });
+    });
+
+    it("state=sent → waiting_for_client_sign (forwarded to client)", () => {
+      expect(
+        mapDubidocStatus({ id: "d", status: "waiting_for_contractor_sign", state: "sent" }),
+      ).toEqual({
+        status: "waiting_for_client_sign",
+        edoStatus: "sent",
+      });
+    });
+
+    it("state=new + org status=signed → waiting_for_client_sign (FOP signed, not yet advanced)", () => {
+      // The exact regression: org-relative `signed` must NOT mark the act fully signed.
+      expect(mapDubidocStatus({ id: "d", status: "signed", state: "new" })).toEqual({
+        status: "waiting_for_client_sign",
+        edoStatus: "signed",
+      });
+    });
+
+    it("state=new + org status=new → sent_to_edo (awaiting the FOP)", () => {
+      expect(mapDubidocStatus({ id: "d", status: "new", state: "new" })).toEqual({
+        status: "sent_to_edo",
+        edoStatus: "new",
+      });
+    });
+
+    it("state=signed wins over the archived flag", () => {
+      expect(
+        mapDubidocStatus({ id: "d", status: "signed", state: "signed", archived: true }),
+      ).toEqual({
+        status: "signed",
+        edoStatus: "signed",
+      });
+    });
+
+    it("archived wins over an unfinished state=new", () => {
+      expect(mapDubidocStatus({ id: "d", status: "signed", state: "new", archived: true })).toEqual(
+        {
+          status: "deleted",
+          edoStatus: "archived",
+        },
+      );
+    });
+  });
 });

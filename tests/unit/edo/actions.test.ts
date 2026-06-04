@@ -31,6 +31,7 @@ vi.mock("@/lib/external-apis/dubidoc", () => ({
   getDocumentStatus: vi.fn(),
   generateSigningLink: vi.fn(),
   deleteSigningLinks: vi.fn(),
+  sendDocument: vi.fn(),
 }));
 
 vi.mock("@/lib/edo/poll-dubidoc", () => ({
@@ -42,12 +43,14 @@ import {
   deleteSigningLinks,
   generateSigningLink,
   getDocumentStatus,
+  sendDocument,
 } from "@/lib/external-apis/dubidoc";
 import {
   retryDubidocSendAction,
   refreshDubidocStatusAction,
   getSigningLinkAction,
   revokeSigningLinkAction,
+  finalizeInAppSigningAction,
 } from "@/app/(dashboard)/acts/[id]/act-actions";
 import { triggerDubidocPollAction } from "@/app/(dashboard)/dashboard-actions";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
@@ -56,6 +59,7 @@ const mockSend = vi.mocked(sendActToDubidoc);
 const mockGetStatus = vi.mocked(getDocumentStatus);
 const mockGenerateLink = vi.mocked(generateSigningLink);
 const mockDeleteLinks = vi.mocked(deleteSigningLinks);
+const mockSendDocument = vi.mocked(sendDocument);
 const mockPoll = vi.mocked(pollDubidocStatuses);
 
 describe("retryDubidocSendAction", () => {
@@ -211,6 +215,68 @@ describe("revokeSigningLinkAction", () => {
     mockDeleteLinks.mockRejectedValueOnce(new Error("network"));
 
     const result = await revokeSigningLinkAction("act-1");
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("finalizeInAppSigningAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbResult.rows = [];
+  });
+
+  it("returns error when act not found", async () => {
+    mockDbResult.rows = [];
+    const result = await finalizeInAppSigningAction("nonexistent");
+    expect(result.ok).toBe(false);
+    expect(mockSendDocument).not.toHaveBeenCalled();
+  });
+
+  it("no-ops (ok) for non-dubidoc act", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "vchasno_external", status: "draft" }];
+    const result = await finalizeInAppSigningAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockSendDocument).not.toHaveBeenCalled();
+  });
+
+  it("forwards to client when FOP signed but flow not advanced (state=new, status=signed)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc", status: "sent_to_edo" }];
+    mockGetStatus.mockResolvedValue({ id: "doc-1", status: "signed", state: "new" });
+    mockSendDocument.mockResolvedValueOnce();
+    mockDeleteLinks.mockResolvedValueOnce();
+
+    const result = await finalizeInAppSigningAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockSendDocument).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("does NOT forward when the FOP has not signed yet (state=new, status=new)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc", status: "sent_to_edo" }];
+    mockGetStatus.mockResolvedValue({ id: "doc-1", status: "new", state: "new" });
+    mockDeleteLinks.mockResolvedValueOnce();
+
+    const result = await finalizeInAppSigningAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockSendDocument).not.toHaveBeenCalled();
+  });
+
+  it("does NOT forward when the document is already fully signed (state=signed)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc", status: "sent_to_edo" }];
+    mockGetStatus.mockResolvedValue({ id: "doc-1", status: "signed", state: "signed" });
+    mockDeleteLinks.mockResolvedValueOnce();
+
+    const result = await finalizeInAppSigningAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockSendDocument).not.toHaveBeenCalled();
+  });
+
+  it("stays ok even when forwarding throws (best-effort)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", edoProvider: "dubidoc", status: "sent_to_edo" }];
+    mockGetStatus.mockResolvedValue({ id: "doc-1", status: "signed", state: "new" });
+    mockSendDocument.mockRejectedValueOnce(new Error("send failed"));
+    mockDeleteLinks.mockResolvedValueOnce();
+
+    const result = await finalizeInAppSigningAction("act-1");
     expect(result.ok).toBe(true);
   });
 });

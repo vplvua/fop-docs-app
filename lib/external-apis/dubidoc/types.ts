@@ -26,7 +26,16 @@ export interface CreateDocumentResponse {
 
 export interface DocumentStatusResponse {
   id: string;
+  /**
+   * Org-relative status — "Визначається для поточного авторизованого
+   * користувача/організації". After the FOP (owner) signs, this reads `signed`
+   * from the FOP's perspective even though the client has not signed. Use
+   * `state` for the document-level signal; `status` only disambiguates whether
+   * the FOP has signed while `state` is still `new`.
+   */
   status: string;
+  /** Document-level lifecycle: `new` → `sent` (to client) → `signed` (all parties). */
+  state?: "new" | "sent" | "signed";
   archived?: boolean;
   refused?: boolean;
 }

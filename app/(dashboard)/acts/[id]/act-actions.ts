@@ -19,6 +19,7 @@ import {
   DubiDocApiError,
   generateSigningLink,
   getDocumentStatus,
+  sendDocument,
 } from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 
@@ -301,4 +302,49 @@ export async function revokeSigningLinkAction(
   }
 
   return { ok: true };
+}
+
+/**
+ * Finalize the in-app signing modal once the FOP closes it. Signing via the
+ * public link only applies the FOP's (owner) signature — unlike the website's
+ * "Підписати та надіслати", it does NOT advance the sequential route. So when
+ * the FOP has signed (`state = new`, org `status = signed`) we explicitly call
+ * `/send` to forward the document to the client. Then the public link is revoked
+ * and the act status is refreshed (now driven by document-level `state`).
+ *
+ * Forward + revoke are best-effort (logged, never block); status refresh is the
+ * authoritative result returned to the caller.
+ */
+export async function finalizeInAppSigningAction(
+  actId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const [act] = await db
+    .select({ edoDocId: acts.edoDocId, edoProvider: acts.edoProvider })
+    .from(acts)
+    .where(eq(acts.id, actId))
+    .limit(1);
+
+  if (!act) return { ok: false, error: "Акт не знайдено" };
+  if (act.edoProvider !== "dubidoc" || !act.edoDocId) return { ok: true };
+
+  // Forward to the client if the FOP just signed but the route hasn't advanced.
+  try {
+    const status = await getDocumentStatus(act.edoDocId);
+    if (status.state === "new" && status.status === "signed") {
+      await sendDocument(act.edoDocId);
+      logger.info(
+        { event: "edo.sent_for_client_sign", actId, edoDocId: act.edoDocId },
+        "Forwarded signed document to client",
+      );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Невідома помилка";
+    logger.warn(
+      { event: "edo.forward_failed", actId, edoDocId: act.edoDocId, error: message },
+      "Failed to forward signed document to client",
+    );
+  }
+
+  await revokeSigningLinkAction(actId);
+  return refreshDubidocStatusAction(actId);
 }

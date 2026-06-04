@@ -138,6 +138,26 @@ export async function generateSigningLink(docId: string): Promise<GenerateLinkRe
 }
 
 /**
+ * Start the document flow — forward the document down its sequential route to
+ * the first participant (the client). Required after the FOP signs via the
+ * public sign link, because a public-link signature applies the owner's
+ * signature but does NOT advance the route (unlike the website's "Підписати та
+ * надіслати"). DubiDoc requires an empty JSON object as the body.
+ */
+export async function sendDocument(docId: string): Promise<void> {
+  await attemptRequest<{ success: boolean }>(
+    `${API_BASE}/documents/${docId}/send`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({}),
+    },
+    "sendDocument",
+    0,
+  );
+}
+
+/**
  * Revoke ALL public links for a document (DubiDoc has no per-action delete).
  * Called right after the FOP signs to minimize the window the public sign URL
  * is usable. Safe to call when no links exist.
