@@ -14,7 +14,22 @@ import {
 import { clients } from "./clients";
 import { edoProviderEnum } from "./clients";
 
-export const actStatusEnum = pgEnum("act_status", ["draft", "sent_to_edo", "signed", "deleted"]);
+export const actStatusEnum = pgEnum("act_status", [
+  "draft",
+  "sent_to_edo",
+  "waiting_for_client_sign",
+  "signed",
+  "deleted",
+]);
+
+/**
+ * Act statuses that are still pending in DubiDoc — the FOP has sent the act but
+ * the document is not yet fully signed. `sent_to_edo` = sent, awaiting the FOP's
+ * own signature (raw DubiDoc `new`); `waiting_for_client_sign` = the FOP signed,
+ * the client has not (raw `waiting_for_contractor_sign`). Both MUST keep being
+ * polled so the act can advance to `signed`.
+ */
+export const EDO_PENDING_STATUSES = ["sent_to_edo", "waiting_for_client_sign"] as const;
 
 export const billingPeriodEnum = pgEnum("billing_period", ["monthly", "annual"]);
 

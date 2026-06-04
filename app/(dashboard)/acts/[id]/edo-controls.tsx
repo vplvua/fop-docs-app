@@ -147,6 +147,14 @@ export function EdoStatusBanners({
     );
   }
 
+  if (status === "waiting_for_client_sign") {
+    return (
+      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+        <p className="text-sm font-medium text-primary">Ви підписали — очікує підпису клієнта</p>
+      </div>
+    );
+  }
+
   if (edoStatus === "refused") {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">

@@ -17,9 +17,9 @@ export function DubidocPollButton() {
     setLoading(false);
 
     if (res.ok && res.result) {
-      const { total, signed, deleted, refused, errors } = res.result;
+      const { total, signed, waiting, deleted, refused, errors } = res.result;
       setMessage(
-        `Опитано ${String(total)} актів: ${String(signed)} підписано, ${String(deleted)} видалено, ${String(refused)} відмовлено, ${String(errors)} помилок`,
+        `Опитано ${String(total)} актів: ${String(signed)} підписано, ${String(waiting)} очікують клієнта, ${String(deleted)} видалено, ${String(refused)} відмовлено, ${String(errors)} помилок`,
       );
       router.refresh();
     } else {

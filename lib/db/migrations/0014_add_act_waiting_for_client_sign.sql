@@ -1,0 +1,1 @@
+ALTER TYPE "public"."act_status" ADD VALUE 'waiting_for_client_sign' BEFORE 'signed';

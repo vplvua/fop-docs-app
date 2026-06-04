@@ -11,6 +11,7 @@ import { updateManualAct } from "@/lib/acts/update-manual-act";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { payments } from "@/lib/db/schema/payments";
+import { mapDubidocStatus } from "@/lib/edo/dubidoc-status";
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import { validateVchasnoTransition } from "@/lib/edo/vchasno-state";
 import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
@@ -201,19 +202,16 @@ export async function refreshDubidocStatusAction(
 
   try {
     const response = await getDocumentStatus(act.edoDocId);
+    const patch = mapDubidocStatus(response);
 
-    const updates: Record<string, unknown> = { edoStatus: response.status, updatedAt: sql`now()` };
-
-    if (response.status === "signed") {
-      updates.status = "signed";
-    } else if (response.archived) {
-      updates.status = "deleted";
-      updates.edoStatus = "archived";
-    } else if (response.refused) {
-      updates.edoStatus = "refused";
-    }
-
-    await db.update(acts).set(updates).where(eq(acts.id, actId));
+    await db
+      .update(acts)
+      .set({
+        ...(patch.status ? { status: patch.status } : {}),
+        edoStatus: patch.edoStatus,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(acts.id, actId));
 
     return { ok: true };
   } catch (err) {

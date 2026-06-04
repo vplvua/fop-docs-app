@@ -32,12 +32,15 @@ async function countActsByStatus(status: (typeof acts.status.enumValues)[number]
 }
 
 export default async function DashboardPage() {
-  const [health, queued, awaitingReview, awaitingSignature] = await Promise.all([
-    getIntegrationHealth(),
-    countPaymentsByStatus("in_queue"),
-    countPaymentsByStatus("awaiting_review"),
-    countActsByStatus("sent_to_edo"),
-  ]);
+  const [health, queued, awaitingReview, awaitingSignature, awaitingClientSign] = await Promise.all(
+    [
+      getIntegrationHealth(),
+      countPaymentsByStatus("in_queue"),
+      countPaymentsByStatus("awaiting_review"),
+      countActsByStatus("sent_to_edo"),
+      countActsByStatus("waiting_for_client_sign"),
+    ],
+  );
 
   const healthByService = new Map(health.map((h) => [h.service, h]));
 
@@ -56,7 +59,7 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <CounterCard label="Платежів у черзі" value={queued} href="/queue?tab=in_queue" />
           <CounterCard
             label="Платежів на апрув"
@@ -67,6 +70,11 @@ export default async function DashboardPage() {
             label="Актів очікують підпису"
             value={awaitingSignature}
             href="/acts?status=sent_to_edo"
+          />
+          <CounterCard
+            label="Очікують підпису клієнта"
+            value={awaitingClientSign}
+            href="/acts?status=waiting_for_client_sign"
           />
         </div>
 

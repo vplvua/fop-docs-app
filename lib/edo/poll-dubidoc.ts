@@ -1,15 +1,22 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { acts } from "@/lib/db/schema/acts";
+import { acts, EDO_PENDING_STATUSES } from "@/lib/db/schema/acts";
 import { payments } from "@/lib/db/schema/payments";
-import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import {
+  DubiDocApiError,
+  type DocumentStatusResponse,
+  getDocumentStatus,
+} from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 import { recordIntegrationError, recordIntegrationSuccess } from "@/lib/observability";
+
+import { mapDubidocStatus } from "./dubidoc-status";
 
 export interface PollResult {
   total: number;
   signed: number;
+  waiting: number;
   deleted: number;
   refused: number;
   unchanged: number;
@@ -17,7 +24,7 @@ export interface PollResult {
   errors: number;
 }
 
-type StatusOutcome = "signed" | "deleted" | "refused" | "unchanged" | "reset";
+type StatusOutcome = "signed" | "waiting" | "deleted" | "refused" | "unchanged" | "reset";
 
 async function resetActToDraft(actId: string): Promise<void> {
   await db
@@ -35,40 +42,31 @@ async function resetActToDraft(actId: string): Promise<void> {
 async function applyStatusUpdate(
   actId: string,
   paymentId: string,
-  response: { status: string; archived?: boolean; refused?: boolean },
+  response: DocumentStatusResponse,
 ): Promise<StatusOutcome> {
-  if (response.status === "signed") {
-    await db
-      .update(acts)
-      .set({ status: "signed", edoStatus: "signed", updatedAt: sql`now()` })
-      .where(eq(acts.id, actId));
-    return "signed";
-  }
+  const patch = mapDubidocStatus(response);
 
-  if (response.archived) {
-    await db
-      .update(acts)
-      .set({ status: "deleted", edoStatus: "archived", updatedAt: sql`now()` })
-      .where(eq(acts.id, actId));
+  await db
+    .update(acts)
+    .set({
+      ...(patch.status ? { status: patch.status } : {}),
+      edoStatus: patch.edoStatus,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(acts.id, actId));
+
+  // An archived DubiDoc document deletes the act and frees its payment for
+  // re-classification (FR-EDGE-01).
+  if (patch.status === "deleted") {
     await db
       .update(payments)
       .set({ actId: null, status: "received", updatedAt: sql`now()` })
       .where(eq(payments.id, paymentId));
     return "deleted";
   }
-
-  if (response.refused) {
-    await db
-      .update(acts)
-      .set({ edoStatus: "refused", updatedAt: sql`now()` })
-      .where(eq(acts.id, actId));
-    return "refused";
-  }
-
-  await db
-    .update(acts)
-    .set({ edoStatus: response.status, updatedAt: sql`now()` })
-    .where(eq(acts.id, actId));
+  if (patch.status === "signed") return "signed";
+  if (patch.status === "waiting_for_client_sign") return "waiting";
+  if (patch.edoStatus === "refused") return "refused";
   return "unchanged";
 }
 
@@ -112,6 +110,7 @@ function aggregateResults(outcomes: PromiseSettledResult<StatusOutcome | "error"
   const result: PollResult = {
     total: outcomes.length,
     signed: 0,
+    waiting: 0,
     deleted: 0,
     refused: 0,
     unchanged: 0,
@@ -131,13 +130,24 @@ function aggregateResults(outcomes: PromiseSettledResult<StatusOutcome | "error"
 }
 
 export async function pollDubidocStatuses(): Promise<PollResult> {
+  // Both pending states (sent_to_edo = awaiting the FOP, waiting_for_client_sign
+  // = awaiting the client) must keep being polled so the act can reach `signed`.
   const pendingActs = await db
     .select({ id: acts.id, edoDocId: acts.edoDocId, paymentId: acts.paymentId })
     .from(acts)
-    .where(and(eq(acts.status, "sent_to_edo"), eq(acts.edoProvider, "dubidoc")));
+    .where(and(inArray(acts.status, EDO_PENDING_STATUSES), eq(acts.edoProvider, "dubidoc")));
 
   if (pendingActs.length === 0) {
-    return { total: 0, signed: 0, deleted: 0, refused: 0, unchanged: 0, reset: 0, errors: 0 };
+    return {
+      total: 0,
+      signed: 0,
+      waiting: 0,
+      deleted: 0,
+      refused: 0,
+      unchanged: 0,
+      reset: 0,
+      errors: 0,
+    };
   }
 
   const outcomes = await Promise.allSettled(pendingActs.map(pollSingleAct));

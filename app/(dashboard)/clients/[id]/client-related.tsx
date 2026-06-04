@@ -13,6 +13,7 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
 const ACT_STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
   sent_to_edo: "Відправлено в ЕДО",
+  waiting_for_client_sign: "Очікує підпису клієнта",
   signed: "Підписано",
   deleted: "Видалено",
 };

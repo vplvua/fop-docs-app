@@ -62,6 +62,7 @@ const SORT_COLUMNS = {
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
   sent_to_edo: "Відправлено в ЕДО",
+  waiting_for_client_sign: "Очікує підпису клієнта",
   signed: "Підписано",
   deleted: "Видалено",
 };
@@ -70,6 +71,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_BADGES: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   sent_to_edo: "bg-warning/12 text-warning-deep",
+  waiting_for_client_sign: "bg-primary/12 text-primary",
   signed: "bg-success/12 text-success-deep",
   deleted: "bg-destructive/12 text-destructive-deep",
 };
@@ -184,7 +186,13 @@ export default async function ActsPage({ searchParams }: Props) {
   );
 }
 
-const STATUS_ORDER = ["draft", "sent_to_edo", "signed", "deleted"] as const;
+const STATUS_ORDER = [
+  "draft",
+  "sent_to_edo",
+  "waiting_for_client_sign",
+  "signed",
+  "deleted",
+] as const;
 const SERVICE_TYPE_ORDER = ["sms", "access"] as const;
 
 function activeChips(params: {

@@ -110,6 +110,7 @@ describe("triggerDubidocPollAction", () => {
     mockPoll.mockResolvedValueOnce({
       total: 5,
       signed: 2,
+      waiting: 1,
       deleted: 0,
       refused: 1,
       unchanged: 2,

@@ -14,6 +14,7 @@ import { ActDetailPanel } from "./act-detail-panel";
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
   sent_to_edo: "Відправлено в ЕДО",
+  waiting_for_client_sign: "Очікує підпису клієнта",
   signed: "Підписано",
   deleted: "Видалено",
 };
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_BADGES: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   sent_to_edo: "bg-warning/12 text-warning-deep",
+  waiting_for_client_sign: "bg-primary/12 text-primary",
   signed: "bg-success/12 text-success-deep",
   deleted: "bg-destructive/12 text-destructive-deep",
 };

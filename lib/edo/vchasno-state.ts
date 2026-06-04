@@ -1,4 +1,4 @@
-type ActStatus = "draft" | "sent_to_edo" | "signed" | "deleted";
+type ActStatus = "draft" | "sent_to_edo" | "waiting_for_client_sign" | "signed" | "deleted";
 type EdoProvider = "dubidoc" | "vchasno_external";
 
 type TransitionResult = { ok: true } | { ok: false; error: string };

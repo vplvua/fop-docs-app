@@ -204,7 +204,9 @@ export function ActDetailPanel({
 }: Props) {
   const canEdit = status === "draft" || edoProvider === "vchasno_external";
   const showRetry = status === "draft" && edoProvider === "dubidoc";
-  const showRefresh = status === "sent_to_edo" && edoProvider === "dubidoc";
+  // Both pending DubiDoc states can still change → keep the refresh available.
+  const isEdoPending = status === "sent_to_edo" || status === "waiting_for_client_sign";
+  const showRefresh = isEdoPending && edoProvider === "dubidoc";
   const showDubidocLink = edoProvider === "dubidoc" && edoDocId;
   const showMarkSigned = edoProvider === "vchasno_external" && status === "draft";
   const showUnmarkSigned = edoProvider === "vchasno_external" && status === "signed";
