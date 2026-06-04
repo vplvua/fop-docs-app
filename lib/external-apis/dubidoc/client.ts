@@ -9,6 +9,10 @@ import type {
 } from "./types";
 
 const RETRY_DELAYS = [1000, 5000, 30000];
+// A 429 must NOT loop forever: bound the number of rate-limit waits and cap each
+// wait so a single request can never block a serverless function indefinitely.
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_RATE_LIMIT_WAIT_MS = 30000;
 const API_BASE = "https://api.dubidoc.com.ua/api/v1";
 
 function getAuthHeaders(): Record<string, string> {
@@ -55,10 +59,20 @@ async function attemptRequest<T>(
   }
 
   if (res.status === 429) {
+    if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+      throw new DubiDocApiError(
+        429,
+        `DubiDoc rate limited (429) after ${String(attempt)} retries (${context})`,
+      );
+    }
     const retryAfter = Number(res.headers.get("Retry-After") ?? "60");
-    logger.warn({ event: "dubidoc.rate_limited", retryAfter }, "DubiDoc 429, waiting");
-    await sleep(retryAfter * 1000);
-    return attemptRequest(url, init, context, attempt);
+    const waitMs = Math.min(retryAfter * 1000, MAX_RATE_LIMIT_WAIT_MS);
+    logger.warn(
+      { event: "dubidoc.rate_limited", retryAfter, waitMs, attempt: attempt + 1 },
+      "DubiDoc 429, waiting",
+    );
+    await sleep(waitMs);
+    return attemptRequest(url, init, context, attempt + 1);
   }
 
   if (res.status >= 500) {

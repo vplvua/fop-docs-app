@@ -129,6 +129,24 @@ function aggregateResults(outcomes: PromiseSettledResult<StatusOutcome | "error"
   return result;
 }
 
+// DubiDoc rate-limits (429, Retry-After: 60s). Polling every pending act at once
+// trips the limit hard; process a few at a time so a growing backlog of acts
+// does not stall the whole poll (and hang the manual «Опитати статуси» button).
+const POLL_CONCURRENCY = 4;
+
+async function pollInBatches(
+  pending: { id: string; edoDocId: string | null; paymentId: string }[],
+): Promise<PromiseSettledResult<StatusOutcome | "error">[]> {
+  const outcomes: PromiseSettledResult<StatusOutcome | "error">[] = [];
+  for (let i = 0; i < pending.length; i += POLL_CONCURRENCY) {
+    const batch = pending.slice(i, i + POLL_CONCURRENCY);
+    // Batches are intentionally sequential — that is the rate-limit throttle.
+    // eslint-disable-next-line no-await-in-loop
+    outcomes.push(...(await Promise.allSettled(batch.map((act) => pollSingleAct(act)))));
+  }
+  return outcomes;
+}
+
 export async function pollDubidocStatuses(): Promise<PollResult> {
   // Both pending states (sent_to_edo = awaiting the FOP, waiting_for_client_sign
   // = awaiting the client) must keep being polled so the act can reach `signed`.
@@ -150,7 +168,7 @@ export async function pollDubidocStatuses(): Promise<PollResult> {
     };
   }
 
-  const outcomes = await Promise.allSettled(pendingActs.map(pollSingleAct));
+  const outcomes = await pollInBatches(pendingActs);
   const result = aggregateResults(outcomes);
 
   if (result.errors === 0 || result.errors < result.total) {

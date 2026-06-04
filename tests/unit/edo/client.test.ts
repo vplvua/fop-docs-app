@@ -10,7 +10,7 @@ import {
   getDocumentStatus,
   sendDocument,
 } from "@/lib/external-apis/dubidoc/client";
-import { DubiDocAuthError } from "@/lib/external-apis/dubidoc/types";
+import { DubiDocApiError, DubiDocAuthError } from "@/lib/external-apis/dubidoc/types";
 import type { CreateDocumentRequest } from "@/lib/external-apis/dubidoc/types";
 
 const API_URL = "https://api.dubidoc.com.ua/api/v1/documents";
@@ -133,6 +133,20 @@ describe("getDocumentStatus", () => {
     const result = await getDocumentStatus("doc-123");
     expect(result.status).toBe("new");
     expect(attempt).toBe(2);
+  });
+
+  it("gives up on sustained 429 instead of looping forever", async () => {
+    let attempt = 0;
+    server.use(
+      http.get(`${API_URL}/doc-123`, () => {
+        attempt++;
+        return new HttpResponse(null, { status: 429, headers: { "Retry-After": "0" } });
+      }),
+    );
+
+    await expect(getDocumentStatus("doc-123")).rejects.toThrow(DubiDocApiError);
+    // Initial attempt + MAX_RATE_LIMIT_RETRIES (2) waits, then it throws — bounded.
+    expect(attempt).toBe(3);
   });
 });
 
