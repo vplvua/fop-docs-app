@@ -19,4 +19,4 @@
 ## 4. Quality gate & verification
 
 - [x] 4.1 `npm run qa` green (lint → format:check → typecheck → test:run → build → openspec validate)
-- [ ] 4.2 Manual dev smoke (Real behavior proof): import a payment via statement-by-date and click «Класифікувати» during the race window → no `is already classified` error, panel refreshes to the act; reload confirms a single act. Capture verification log / screenshot for the PR
+- [x] 4.2 Manual dev smoke (Real behavior proof): import a payment via statement-by-date and click «Класифікувати» during the race window → no `is already classified` error, panel refreshes to the act; reload confirms a single act. Capture verification log / screenshot for the PR
