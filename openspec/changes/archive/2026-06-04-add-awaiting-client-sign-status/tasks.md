@@ -29,4 +29,4 @@
 ## 6. Quality gate & verification
 
 - [x] 6.1 `npm run qa` 6/6 green (incl. `openspec validate`)
-- [ ] 6.2 Manual dev smoke: send an act (→ «Відправлено в ЕДО», raw `new`); sign only as FOP in DubiDoc; «Оновити статус» → badge flips to «Очікує підпису клієнта», act still appears in the poll set and the dashboard tile; client signs → «Підписано». Capture Real-behavior-proof for the PR
+- [x] 6.2 Manual dev smoke (verified 2026-06-04): act 05/2026, FOP-signed in DubiDoc, «Оновити статус» → badge «Очікує підпису клієнта» + banner «Ви підписали — очікує підпису клієнта». Real-behavior-proof: screenshot confirmed by operator.
