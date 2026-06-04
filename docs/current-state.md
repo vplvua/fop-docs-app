@@ -1,6 +1,6 @@
 # Current State
 
-**Останнє оновлення:** 2026-05-30
+**Останнє оновлення:** 2026-06-04
 **Призначення:** snapshot фактичної готовності системи. Оновлюється у Definition-of-Done кожного capability slice ([`mvp-capability-plan.md § 6`](mvp-capability-plan.md)).
 
 ---
@@ -16,6 +16,8 @@
 ## Next slice
 
 Phase 0 завершено (всі S1–S13). Phase 1 у роботі: `add-privatbank-statement-by-date` ✅ archived, `add-manual-act` ✅ archived (код + `npm run qa` 6/6; лишилися лише infra-gated верифікації — integration smoke та manual dev-smoke з Real-behavior-proof перед PR). Створено proposal `add-manual-act-edit-delete` (редагування значущих полів + hard-delete ручних актів; `openspec validate --strict` ✅; ще **не реалізовано** — чекає на `/opsx:apply`). Далі решта Phase 1 з [`prd.md § 6`](prd.md) / [`mvp-capability-plan.md § 8`](mvp-capability-plan.md): bulk-операції на платежах, перевипуск акту (FR-EDGE-02), push-алерти, webhook від Дубідок, лічильник послідовних провалів для health-банера (FR-PAY-07).
+
+**`payment-split` уточнення:** change `constrain-split-to-payer-edrpou` — рядковий клієнт у формі розділення прив'язано до ЄДРПОУ платника (селектор ховається для єдиного клієнта; транзитний ЄДРПОУ — виняток із кросклієнтським пікером); код + `typecheck`/`lint`/unit/`build` green, `openspec validate --strict` ✅; лишився manual dev-smoke з Real-behavior-proof перед PR/archive (див. ADR D-042 уточнення).
 
 ## Blockers
 

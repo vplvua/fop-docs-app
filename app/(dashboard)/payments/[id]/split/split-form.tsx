@@ -81,6 +81,7 @@ interface RowProps {
   index: number;
   line: LineState;
   clients: ContractClient[];
+  showClientPicker: boolean;
   canRemove: boolean;
   onPatch: (index: number, patch: Partial<LineState>) => void;
   onClient: (index: number, clientId: string) => void;
@@ -209,7 +210,16 @@ function SplitLineFields({
   );
 }
 
-function SplitLineRow({ index, line, clients, canRemove, onPatch, onClient, onRemove }: RowProps) {
+function SplitLineRow({
+  index,
+  line,
+  clients,
+  showClientPicker,
+  canRemove,
+  onPatch,
+  onClient,
+  onRemove,
+}: RowProps) {
   const on = useLineHandlers(index, onPatch);
   const setClient = useCallback((id: string) => onClient(index, id), [onClient, index]);
   const remove = useCallback(() => onRemove(index), [onRemove, index]);
@@ -229,12 +239,14 @@ function SplitLineRow({ index, line, clients, canRemove, onPatch, onClient, onRe
           </button>
         ) : null}
       </div>
-      <ClientCombobox
-        clients={clients}
-        value={line.clientId}
-        onChange={setClient}
-        disabled={false}
-      />
+      {showClientPicker ? (
+        <ClientCombobox
+          clients={clients}
+          value={line.clientId}
+          onChange={setClient}
+          disabled={false}
+        />
+      ) : null}
       <SplitLineFields line={line} on={on} />
     </div>
   );
@@ -255,14 +267,23 @@ const HINT_FIELDS = ["serviceType", "periodYear", "periodMonth"] as const;
 export function SplitForm({
   paymentId,
   paymentAmount,
+  payerName,
+  payerLegalId,
+  isTransit,
   clients,
 }: {
   paymentId: string;
   paymentAmount: string;
+  payerName: string;
+  payerLegalId: string;
+  isTransit: boolean;
   clients: ContractClient[];
 }) {
   const router = useRouter();
   const firstClient = clients[0]?.id ?? "";
+  // A transit payment may span several clients, so each line keeps its own
+  // picker; a fixed-payer split only needs one when the payer has >1 contract.
+  const showClientPicker = isTransit || clients.length > 1;
   const [lines, setLines] = useState<LineState[]>(() => [
     emptyLine(firstClient),
     emptyLine(firstClient),
@@ -360,6 +381,23 @@ export function SplitForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+        {isTransit ? (
+          <>
+            <span className="text-muted-foreground">Транзитний платник:</span>{" "}
+            <strong className="text-foreground">{payerName}</strong>{" "}
+            <span className="text-muted-foreground">
+              · ЄДРПОУ {payerLegalId} — оберіть клієнта для кожного акту
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-muted-foreground">Платник для всіх актів:</span>{" "}
+            <strong className="text-foreground">{payerName}</strong>{" "}
+            <span className="text-muted-foreground">· ЄДРПОУ {payerLegalId}</span>
+          </>
+        )}
+      </div>
       <AllocationBar paymentAmount={paymentAmount} allocated={allocated} />
       {lines.map((line, index) => (
         <SplitLineRow
@@ -367,6 +405,7 @@ export function SplitForm({
           index={index}
           line={line}
           clients={clients}
+          showClientPicker={showClientPicker}
           canRemove={lines.length > 1}
           onPatch={onPatch}
           onClient={onClient}

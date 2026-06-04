@@ -6,6 +6,7 @@ import { cancelSplit, splitPayment, type SplitLine } from "@/lib/acts/split-paym
 import { reconcilesExactly, splitPaymentFormSchema } from "@/lib/acts/split-payment-schema";
 import { suggestManualActPricing } from "@/lib/acts/manual-act-hint";
 import { manualActDate } from "@/lib/acts/manual-act-id";
+import { getTransitEdrpouList } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
 import { contracts } from "@/lib/db/schema/contracts";
@@ -35,7 +36,11 @@ export async function splitPaymentAction(input: unknown): Promise<SplitPaymentRe
   const data = parsed.data;
 
   const [payment] = await db
-    .select({ amount: payments.amount, status: payments.status })
+    .select({
+      amount: payments.amount,
+      status: payments.status,
+      payerLegalId: payments.payerLegalId,
+    })
     .from(payments)
     .where(eq(payments.id, data.paymentId))
     .limit(1);
@@ -52,6 +57,12 @@ export async function splitPaymentAction(input: unknown): Promise<SplitPaymentRe
     return { error: `Сума рядків має точно дорівнювати сумі платежу (${payment.amount} грн)` };
   }
 
+  // A transit/aggregated payer EDRPOU belongs to the intermediary bank, so the
+  // split is not anchored to it — lines may target different clients (D-008/
+  // D-027). For a normal payer every act must belong to that payer's EDRPOU.
+  const transitList = await getTransitEdrpouList();
+  const isTransit = transitList.includes(payment.payerLegalId);
+
   const clientIds = [...new Set(data.lines.map((l) => l.clientId))];
   const clientRows = await db.select().from(clients).where(inArray(clients.id, clientIds));
   const contractRows = await db
@@ -66,6 +77,13 @@ export async function splitPaymentAction(input: unknown): Promise<SplitPaymentRe
     const client = clientById.get(l.clientId);
     const contract = contractByClient.get(l.clientId);
     if (!client) return { error: "Клієнта не знайдено" };
+    // For a normal payer every act belongs to the payment's payer (EDRPOU).
+    // The form fixes this, but re-check server-side so a tampered submission
+    // cannot attach acts to an unrelated client. Skipped for transit payers,
+    // whose EDRPOU does not identify the client.
+    if (!isTransit && client.legalId !== payment.payerLegalId) {
+      return { error: "Акт можна створити лише для платника цього платежу" };
+    }
     if (!contract) return { error: `У клієнта «${client.name}» немає договору — акт неможливий` };
     lines.push({
       client,

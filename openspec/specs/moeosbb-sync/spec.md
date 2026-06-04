@@ -3,7 +3,9 @@
 ## Purpose
 
 Read-only sync of client data from external "Моє ОСББ" system via PHP endpoint. Selective field merge (6 fields synced, 4 protected), schedule-based cron (daily/first/last/manual, default daily), manual trigger, integration health tracking. Covers FR-SYNC-01..06, TC-INTEG-03.
+
 ## Requirements
+
 ### Requirement: Sync fetches client data from PHP endpoint
 
 The system SHALL fetch client data from the URL specified by `MOEOSBB_SYNC_URL` env var, authenticating with `Authorization: Bearer <MOEOSBB_SYNC_TOKEN>`. The response SHALL be JSON with shape `{ ok: boolean, updated_at: string, count: number, clients: Array<{ id, full_name, osbb_zkpo, legal_address, osbb_bank, osbb_rr, contract_email, createdt }> }`, where `createdt` is the client's contract date from `osbb_users.createdt`.
@@ -250,4 +252,3 @@ Unmatched remote clients (auto-created as new `Client` records) SHALL NOT receiv
 
 - **WHEN** the sync overwrites the date on 370 existing contracts and creates 24 new ones
 - **THEN** `SyncResult.contractsUpdated` SHALL be `370`, `SyncResult.contractsCreated` SHALL be `24`, and the dashboard message SHALL include «договорів оновлено 370» and «договорів створено 24»
-
