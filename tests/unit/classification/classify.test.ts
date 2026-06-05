@@ -267,14 +267,28 @@ describe("classify — reason branches", () => {
     }
   });
 
-  it("returns sms_quantity_mismatch for unparseable sms quantity", () => {
+  it("returns sms_quantity_mismatch when quantity is unstated and amount is not a clean multiple", () => {
+    // 145 / 1.40 = 103.57… — no parseable quantity and no whole-number fallback
     const input = makeInput({
-      payment: makePayment({ purpose: "Оплата СМС по договір №556770", amount: "140.00" }),
+      payment: makePayment({ purpose: "Оплата СМС по договір №556770", amount: "145.00" }),
     });
     const result = classify(input);
     expect(result.status).toBe("in_queue");
     if (result.status === "in_queue") {
       expect(result.reason).toBe("sms_quantity_mismatch");
+    }
+  });
+
+  it("classifies an SMS payment with no stated quantity via amount / price (1120 / 1.40 = 800)", () => {
+    const input = makeInput({
+      payment: makePayment({ purpose: "ОПЛАТА СМС ДОГОВІР №557113 БЕЗ ПДВ", amount: "1120.00" }),
+    });
+    const result = classify(input);
+    expect(result.status).toBe("classified");
+    if (result.status === "classified") {
+      expect(result.serviceType).toBe("sms");
+      expect(result.quantity).toBe("800");
+      expect(result.quantityUnit).toBe("шт.");
     }
   });
 });

@@ -111,8 +111,25 @@ describe("resolveSmsQuantity", () => {
     });
   });
 
-  it("returns mismatch when quantity not parseable", () => {
-    expect(resolveSmsQuantity("140.00", "1.40", "Оплата за послуги")).toEqual({
+  it("derives quantity from amount / price when none is stated (1120 / 1.40 = 800)", () => {
+    expect(resolveSmsQuantity("1120.00", "1.40", "ОПЛАТА СМС ДОГОВІР №557113 БЕЗ ПДВ")).toEqual({
+      status: "ok",
+      quantity: "800",
+      quantityUnit: "шт.",
+      billingPeriod: "monthly",
+    });
+  });
+
+  it("returns mismatch when no quantity stated and amount is not a clean multiple", () => {
+    // 150 / 1.40 = 107.14… — not a whole number of messages
+    expect(resolveSmsQuantity("150.00", "1.40", "Оплата за послуги")).toEqual({
+      status: "mismatch",
+      reason: "sms_quantity_mismatch",
+    });
+  });
+
+  it("returns mismatch for zero price with no stated quantity", () => {
+    expect(resolveSmsQuantity("140.00", "0", "Оплата за послуги")).toEqual({
       status: "mismatch",
       reason: "sms_quantity_mismatch",
     });

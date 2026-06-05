@@ -72,24 +72,41 @@ export function parseSmsQuantity(purpose: string): number | null {
   return null;
 }
 
+const smsOk = (qty: number): QuantityResult => ({
+  status: "ok",
+  quantity: String(qty),
+  quantityUnit: "шт.",
+  billingPeriod: "monthly",
+});
+const SMS_MISMATCH: QuantityResult = { status: "mismatch", reason: "sms_quantity_mismatch" };
+
 export function resolveSmsQuantity(
   amount: string,
   unitPrice: string,
   purpose: string,
 ): QuantityResult {
+  // 1. Explicit quantity in the purpose text — trust it, but verify the math.
   const parsed = parseSmsQuantity(purpose);
-  if (parsed === null) {
-    return { status: "mismatch", reason: "sms_quantity_mismatch" };
+  if (parsed !== null) {
+    const expected = Math.round(parsed * Number(unitPrice) * 100) / 100;
+    const actual = Number(amount);
+    return Math.abs(expected - actual) > 0.001 ? SMS_MISMATCH : smsOk(parsed);
   }
 
-  const expected = Math.round(parsed * Number(unitPrice) * 100) / 100;
-  const actual = Number(amount);
-
-  if (Math.abs(expected - actual) > 0.001) {
-    return { status: "mismatch", reason: "sms_quantity_mismatch" };
+  // 2. No quantity stated (e.g. "ОПЛАТА СМС ДОГОВІР №…") — derive it from
+  // amount / unit_price, the same clean-division reading the access path uses.
+  // Accept only a whole-number quotient; anything else goes to manual review.
+  const a = Number(amount);
+  const p = Number(unitPrice);
+  if (p <= 0) {
+    return SMS_MISMATCH;
   }
-
-  return { status: "ok", quantity: String(parsed), quantityUnit: "шт.", billingPeriod: "monthly" };
+  const remainder = Math.round((a * 100) % (p * 100)) / 100;
+  const qty = Math.round(a / p);
+  if (Math.abs(remainder) > 0.001 || qty <= 0) {
+    return SMS_MISMATCH;
+  }
+  return smsOk(qty);
 }
 
 export function resolveQuantity(
