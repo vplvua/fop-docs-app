@@ -2,23 +2,34 @@ import { http, HttpResponse } from "msw";
 
 import type {
   CreateDocumentResponse,
+  DocumentParticipant,
   DocumentStatusResponse,
   GenerateLinkResponse,
 } from "@/lib/external-apis/dubidoc";
 
-let mockDocStatus: DocumentStatusResponse = {
+const DEFAULT_STATUS: DocumentStatusResponse = {
   id: "mock-doc-001",
   status: "new",
+  state: "new",
   archived: false,
   refused: false,
+  currentUser: { role: "ROLE_OWNER", status: "pending" },
 };
+
+let mockDocStatus: DocumentStatusResponse = { ...DEFAULT_STATUS };
+let mockParticipants: DocumentParticipant[] = [];
 
 export function setMockDocStatus(status: Partial<DocumentStatusResponse>): void {
   mockDocStatus = { ...mockDocStatus, ...status };
 }
 
+export function setMockParticipants(participants: DocumentParticipant[]): void {
+  mockParticipants = participants;
+}
+
 export function resetMockDocStatus(): void {
-  mockDocStatus = { id: "mock-doc-001", status: "new", archived: false, refused: false };
+  mockDocStatus = { ...DEFAULT_STATUS };
+  mockParticipants = [];
 }
 
 export const dubidocHandlers = [
@@ -27,8 +38,16 @@ export const dubidocHandlers = [
     return HttpResponse.json(response);
   }),
 
+  http.get("https://api.dubidoc.com.ua/api/v1/documents/:id/participants", () =>
+    HttpResponse.json(mockParticipants),
+  ),
+
   http.get("https://api.dubidoc.com.ua/api/v1/documents/:id", () =>
     HttpResponse.json(mockDocStatus),
+  ),
+
+  http.post("https://api.dubidoc.com.ua/api/v1/documents/:id/sign", () =>
+    HttpResponse.json({ success: true }),
   ),
 
   http.post("https://api.dubidoc.com.ua/api/v1/documents/:id/links", ({ params }) => {

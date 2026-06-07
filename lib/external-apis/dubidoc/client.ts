@@ -4,6 +4,7 @@ import { DubiDocApiError, DubiDocAuthError } from "./types";
 import type {
   CreateDocumentRequest,
   CreateDocumentResponse,
+  DocumentParticipant,
   DocumentStatusResponse,
   GenerateLinkResponse,
 } from "./types";
@@ -128,6 +129,23 @@ export async function getDocumentStatus(docId: string): Promise<DocumentStatusRe
       headers: getAuthHeaders(),
     },
     "getDocumentStatus",
+    0,
+  );
+}
+
+/**
+ * The document's route nodes (non-owner participants). The owner's own signing
+ * state is reported separately via the document detail's `currentUser`. Used to
+ * decide "fully signed" because the document-level `state` is unreliable.
+ */
+export async function getDocumentParticipants(docId: string): Promise<DocumentParticipant[]> {
+  return attemptRequest<DocumentParticipant[]>(
+    `${API_BASE}/documents/${docId}/participants`,
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+    },
+    "getDocumentParticipants",
     0,
   );
 }

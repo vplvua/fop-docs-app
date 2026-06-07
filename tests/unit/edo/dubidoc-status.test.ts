@@ -1,110 +1,135 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { mapDubidocStatus } from "@/lib/edo/dubidoc-status";
+import type { DocumentParticipant, DocumentStatusResponse } from "@/lib/external-apis/dubidoc";
+
+function detail(over: Partial<DocumentStatusResponse>): DocumentStatusResponse {
+  return { id: "d", status: "new", ...over };
+}
+
+function participant(over: Partial<DocumentParticipant>): DocumentParticipant {
+  return {
+    status: "signed",
+    role: "DOCUMENT_SIGNER",
+    isSignatureRequired: true,
+    priority: 1,
+    ...over,
+  };
+}
+
+/** A participants-fetcher whose call count can be asserted. */
+function fetcher(participants: DocumentParticipant[] = []) {
+  return vi.fn(() => Promise.resolve(participants));
+}
 
 describe("mapDubidocStatus", () => {
-  it("maps signed → status signed", () => {
-    expect(mapDubidocStatus({ id: "d", status: "signed" })).toEqual({
+  it("FOP signed + client signed but state stuck at 'sent' → signed", async () => {
+    // The exact production bug: state never rolls up, but per-node statuses are signed.
+    const fetch = fetcher([participant({ status: "signed" })]);
+    const patch = await mapDubidocStatus(
+      detail({
+        state: "sent",
+        status: "signed",
+        currentUser: { role: "ROLE_OWNER", status: "signed" },
+      }),
+      fetch,
+    );
+    expect(patch).toEqual({ status: "signed", edoStatus: "signed" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("fast-path state=signed → signed without fetching participants", async () => {
+    const fetch = fetcher();
+    expect(await mapDubidocStatus(detail({ state: "signed", status: "signed" }), fetch)).toEqual({
       status: "signed",
       edoStatus: "signed",
     });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("maps archived flag → status deleted", () => {
-    expect(mapDubidocStatus({ id: "d", status: "whatever", archived: true })).toEqual({
-      status: "deleted",
-      edoStatus: "archived",
-    });
+  it("FOP signed, client signature still pending → waiting_for_client_sign", async () => {
+    const fetch = fetcher([participant({ status: "pending" })]);
+    expect(
+      await mapDubidocStatus(
+        detail({ state: "sent", status: "signed", currentUser: { status: "signed" } }),
+        fetch,
+      ),
+    ).toEqual({ status: "waiting_for_client_sign", edoStatus: "signed" });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("maps refused flag → edo_status refused, lifecycle unchanged", () => {
-    expect(mapDubidocStatus({ id: "d", status: "whatever", refused: true })).toEqual({
+  it("FOP has not signed yet → sent_to_edo without fetching participants", async () => {
+    const fetch = fetcher();
+    expect(
+      await mapDubidocStatus(
+        detail({ state: "new", status: "new", currentUser: { status: "pending" } }),
+        fetch,
+      ),
+    ).toEqual({ status: "sent_to_edo", edoStatus: "new" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("non-required participants do not gate signed", async () => {
+    const fetch = fetcher([
+      participant({ status: "signed", isSignatureRequired: true }),
+      participant({ status: "viewed", isSignatureRequired: false, role: "DOCUMENT_VIEWER" }),
+    ]);
+    expect(
+      await mapDubidocStatus(detail({ state: "sent", currentUser: { status: "signed" } }), fetch),
+    ).toEqual({ status: "signed", edoStatus: "signed" });
+  });
+
+  it("archived flag → deleted (override), no fetch", async () => {
+    const fetch = fetcher();
+    expect(
+      await mapDubidocStatus(detail({ state: "signed", status: "signed", archived: true }), fetch),
+    ).toEqual({ status: "deleted", edoStatus: "archived" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refused flag → edo_status refused, lifecycle unchanged", async () => {
+    expect(
+      await mapDubidocStatus(detail({ status: "whatever", refused: true }), fetcher()),
+    ).toEqual({
       edoStatus: "refused",
     });
   });
 
-  it("maps new → sent_to_edo (awaiting the FOP's signature)", () => {
-    expect(mapDubidocStatus({ id: "d", status: "new" })).toEqual({
-      status: "sent_to_edo",
-      edoStatus: "new",
-    });
+  it("a participant rejection → refused", async () => {
+    const fetch = fetcher([participant({ status: "rejected" })]);
+    expect(
+      await mapDubidocStatus(detail({ state: "sent", currentUser: { status: "signed" } }), fetch),
+    ).toEqual({ edoStatus: "refused" });
   });
 
-  it("maps waiting_for_contractor_sign → waiting_for_client_sign (FOP signed, client pending)", () => {
-    expect(mapDubidocStatus({ id: "d", status: "waiting_for_contractor_sign" })).toEqual({
-      status: "waiting_for_client_sign",
-      edoStatus: "waiting_for_contractor_sign",
-    });
-  });
-
-  it("records an unknown intermediate status raw without moving the lifecycle", () => {
-    expect(mapDubidocStatus({ id: "d", status: "sent_for_sign" })).toEqual({
-      edoStatus: "sent_for_sign",
-    });
-  });
-
-  it("prefers signed over the archived flag", () => {
-    expect(mapDubidocStatus({ id: "d", status: "signed", archived: true })).toEqual({
-      status: "signed",
-      edoStatus: "signed",
-    });
-  });
-
-  it("prefers the archived flag over a new/intermediate status", () => {
-    expect(mapDubidocStatus({ id: "d", status: "new", archived: true })).toEqual({
-      status: "deleted",
-      edoStatus: "archived",
-    });
-  });
-
-  describe("document-level state (authoritative)", () => {
-    it("state=signed → signed (all parties)", () => {
-      expect(mapDubidocStatus({ id: "d", status: "signed", state: "signed" })).toEqual({
-        status: "signed",
-        edoStatus: "signed",
-      });
-    });
-
-    it("state=sent → waiting_for_client_sign (forwarded to client)", () => {
-      expect(
-        mapDubidocStatus({ id: "d", status: "waiting_for_contractor_sign", state: "sent" }),
-      ).toEqual({
+  describe("fallback when currentUser is absent (legacy/mocks)", () => {
+    it("state=sent → waiting_for_client_sign", async () => {
+      expect(await mapDubidocStatus(detail({ state: "sent", status: "x" }), fetcher())).toEqual({
         status: "waiting_for_client_sign",
         edoStatus: "sent",
       });
     });
 
-    it("state=new + org status=signed → waiting_for_client_sign (FOP signed, not yet advanced)", () => {
-      // The exact regression: org-relative `signed` must NOT mark the act fully signed.
-      expect(mapDubidocStatus({ id: "d", status: "signed", state: "new" })).toEqual({
-        status: "waiting_for_client_sign",
-        edoStatus: "signed",
-      });
+    it("state=new + org status=signed → waiting_for_client_sign", async () => {
+      expect(await mapDubidocStatus(detail({ state: "new", status: "signed" }), fetcher())).toEqual(
+        {
+          status: "waiting_for_client_sign",
+          edoStatus: "signed",
+        },
+      );
     });
 
-    it("state=new + org status=new → sent_to_edo (awaiting the FOP)", () => {
-      expect(mapDubidocStatus({ id: "d", status: "new", state: "new" })).toEqual({
-        status: "sent_to_edo",
-        edoStatus: "new",
-      });
-    });
-
-    it("state=signed wins over the archived flag", () => {
-      expect(
-        mapDubidocStatus({ id: "d", status: "signed", state: "signed", archived: true }),
-      ).toEqual({
+    it("no state, org status=signed → signed", async () => {
+      expect(await mapDubidocStatus(detail({ status: "signed" }), fetcher())).toEqual({
         status: "signed",
         edoStatus: "signed",
       });
     });
 
-    it("archived wins over an unfinished state=new", () => {
-      expect(mapDubidocStatus({ id: "d", status: "signed", state: "new", archived: true })).toEqual(
-        {
-          status: "deleted",
-          edoStatus: "archived",
-        },
-      );
+    it("unknown intermediate status recorded raw without moving the lifecycle", async () => {
+      expect(await mapDubidocStatus(detail({ status: "sent_for_sign" }), fetcher())).toEqual({
+        edoStatus: "sent_for_sign",
+      });
     });
   });
 });

@@ -103,58 +103,58 @@ Covers: FR-EDO-05.
 
 ### Requirement: DubiDoc status mapping
 
-The polling/status response SHALL be mapped to act status using the **document-level `state`** (`new → sent → signed`) as the authoritative signal, because the top-level `status` field is computed **relative to the authenticated organization** (the FOP) — once the FOP signs, `status` reads `signed` even though the client has not, which would otherwise mark a half-signed act as fully `signed`.
+The polling/status response SHALL be mapped to act status from **per-node signing statuses**, NOT the document-level `state`. DubiDoc leaves `state = "sent"` even after the FOP (owner) and the client have both signed — verified 2026-06-05/06 on docs `10cdf21d-…` and `bb0cb857-…` — so `state = "signed"` is treated only as a fast-path, never the sole gate.
 
-Mapping (when `state` is present):
+Inputs: the document detail (`GET /api/v1/documents/{id}`) and, when needed, the participants list (`GET /api/v1/documents/{id}/participants`). The **FOP** (owner) signing state is read from the detail's `currentUser.status` (the authenticated org is the document owner/FOP). The **client** signing state is read from the participants list (`status`, `isSignatureRequired`).
 
-- `state = "signed"` → `Act.status = signed` (all parties signed).
+Mapping (evaluated in order):
+
 - `archived = true` → `Act.status = deleted` and `Payment.act_id = NULL`.
-- `refused = true` → `Act.edo_status = "refused"` (Act.status unchanged).
-- `state = "sent"` → `Act.status = waiting_for_client_sign` (forwarded to the client, awaiting their signature).
-- `state = "new"` and org `status ∈ { "signed", "waiting_for_contractor_sign" }` → `Act.status = waiting_for_client_sign` (the FOP has signed; the flow has not advanced yet).
-- `state = "new"` and org `status = "new"` → `Act.status = sent_to_edo` (awaiting the FOP's signature).
-- all other values → `Act.edo_status = <raw status value>` (Act.status unchanged).
+- `refused = true` OR any participant `status = "rejected"` → `Act.edo_status = "refused"` (`Act.status` unchanged).
+- `state = "signed"` (fast-path) → `Act.status = signed`. No participants fetch.
+- `currentUser.status ≠ "signed"` (FOP has not signed) → `Act.status = sent_to_edo`, `Act.edo_status = "new"`. No participants fetch.
+- `currentUser.status = "signed"` (FOP signed): fetch participants — if at least one `isSignatureRequired` participant exists AND all such participants have `status = "signed"` → `Act.status = signed`; otherwise → `Act.status = waiting_for_client_sign`.
 
-When `state` is ABSENT (older responses), the legacy org-relative `status` mapping SHALL apply: `signed → signed`; `archived → deleted`; `refused → edo_status`; `new → sent_to_edo`; `waiting_for_contractor_sign → waiting_for_client_sign`; otherwise raw `edo_status`.
+The participants fetch SHALL occur ONLY when the FOP has already signed (the last branch), to bound API volume, and SHALL run under the existing poll concurrency throttle (`POLL_CONCURRENCY = 4`). When `currentUser` is absent (older responses / mocks), the mapper SHALL fall back to the document-level `state` (`signed → signed`; `sent → waiting_for_client_sign`; `new → sent_to_edo`), with `archived`/`refused` still taking precedence.
 
-`Act.edo_status` is `text` type, not enum. The same mapping SHALL be applied by both the polling cron and the manual refresh, via a single shared mapper.
+`Act.edo_status` is `text` type, not enum. The same mapping SHALL be applied by both the polling cron and the manual refresh, via a single shared mapper that takes the detail plus a participants-fetcher.
 
 Covers: FR-EDO-06, FR-EDO-07.
 
-#### Scenario: Both parties signed (document-level state)
+#### Scenario: FOP + client signed but DubiDoc state stuck at "sent"
 
-- **WHEN** the status response is `{ state: "signed" }` for an act
+- **WHEN** the detail is `{ state: "sent", currentUser: { role: "ROLE_OWNER", status: "signed" } }` and `GET /participants` returns every `isSignatureRequired` participant with `status = "signed"`
 - **THEN** `Act.status` SHALL be updated to `signed`
 
-#### Scenario: FOP signed but flow not advanced is NOT fully signed
+#### Scenario: Fully signed via fast-path state
 
-- **WHEN** the status response is `{ state: "new", status: "signed" }` (org-relative `signed`)
-- **THEN** `Act.status` SHALL be `waiting_for_client_sign`, NOT `signed`
+- **WHEN** the detail is `{ state: "signed" }`
+- **THEN** `Act.status` SHALL be `signed` and the system SHALL NOT call `GET /participants`
 
-#### Scenario: Forwarded to the client
+#### Scenario: FOP signed, client signature still pending
 
-- **WHEN** the status response is `{ state: "sent" }` for an act
-- **THEN** `Act.status` SHALL be `waiting_for_client_sign` and `Act.edo_status` SHALL be `"sent"`
+- **WHEN** the detail is `{ state: "sent", currentUser: { status: "signed" } }` and a required participant has `status = "pending"`
+- **THEN** `Act.status` SHALL be `waiting_for_client_sign`
 
-#### Scenario: Just sent, awaiting the FOP
+#### Scenario: FOP has not signed yet
 
-- **WHEN** the status response is `{ state: "new", status: "new" }` for an act
-- **THEN** `Act.status` SHALL remain `sent_to_edo` and `Act.edo_status` SHALL be `"new"`
+- **WHEN** the detail is `{ state: "new", currentUser: { status: "new" } }`
+- **THEN** `Act.status` SHALL remain `sent_to_edo`, `Act.edo_status` SHALL be `"new"`, and the system SHALL NOT call `GET /participants`
 
 #### Scenario: Document archived in DubiDoc
 
-- **WHEN** the status response includes `{ archived: true }` for an unfinished act
+- **WHEN** the detail includes `{ archived: true }` for an unfinished act
 - **THEN** `Act.status` SHALL be updated to `deleted`, and `Payment.act_id` SHALL be set to `NULL`
 
 #### Scenario: Document refused in DubiDoc
 
-- **WHEN** the status response includes `{ refused: true }` for an act
-- **THEN** `Act.edo_status` SHALL be `"refused"`, `Act.status` SHALL remain unchanged
+- **WHEN** the detail includes `{ refused: true }`, or a participant has `status = "rejected"`
+- **THEN** `Act.edo_status` SHALL be `"refused"` and `Act.status` SHALL remain unchanged
 
-#### Scenario: Legacy response without document-level state
+#### Scenario: Shared mapper for cron and manual refresh
 
-- **WHEN** a status response has no `state` field and `{ status: "signed" }`
-- **THEN** the legacy mapping SHALL apply and `Act.status` SHALL be `signed`
+- **WHEN** either the polling cron or the manual refresh evaluates a document
+- **THEN** both SHALL produce identical act-status outcomes from the same shared mapper
 
 ### Requirement: Archived act releases payment for re-classification
 

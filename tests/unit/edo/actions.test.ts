@@ -29,6 +29,7 @@ vi.mock("@/lib/edo/send-to-dubidoc", () => ({
 
 vi.mock("@/lib/external-apis/dubidoc", () => ({
   getDocumentStatus: vi.fn(),
+  getDocumentParticipants: vi.fn(() => Promise.resolve([])),
   generateSigningLink: vi.fn(),
   deleteSigningLinks: vi.fn(),
   sendDocument: vi.fn(),

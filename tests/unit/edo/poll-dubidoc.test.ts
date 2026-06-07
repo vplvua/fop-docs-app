@@ -22,6 +22,7 @@ vi.mock("@/lib/external-apis/dubidoc", async (importActual) => {
   return {
     ...actual,
     getDocumentStatus: vi.fn(),
+    getDocumentParticipants: vi.fn(() => Promise.resolve([])),
   };
 });
 
@@ -30,11 +31,16 @@ vi.mock("@/lib/observability", () => ({
   recordIntegrationError: vi.fn(),
 }));
 
-import { DubiDocApiError, getDocumentStatus } from "@/lib/external-apis/dubidoc";
+import {
+  DubiDocApiError,
+  getDocumentParticipants,
+  getDocumentStatus,
+} from "@/lib/external-apis/dubidoc";
 import { recordIntegrationSuccess, recordIntegrationError } from "@/lib/observability";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
 
 const mockGetStatus = vi.mocked(getDocumentStatus);
+const mockGetParticipants = vi.mocked(getDocumentParticipants);
 const mockRecordSuccess = vi.mocked(recordIntegrationSuccess);
 const mockRecordError = vi.mocked(recordIntegrationError);
 
@@ -53,12 +59,29 @@ describe("pollDubidocStatuses", () => {
 
   it("maps signed status correctly", async () => {
     mockQueryResult.rows = [{ id: "act-1", edoDocId: "doc-1", paymentId: "pay-1" }];
-    mockGetStatus.mockResolvedValueOnce({ id: "doc-1", status: "signed" });
+    mockGetStatus.mockResolvedValueOnce({ id: "doc-1", status: "signed", state: "signed" });
 
     const result = await pollDubidocStatuses();
     expect(result.signed).toBe(1);
     expect(result.total).toBe(1);
     expect(mockRecordSuccess).toHaveBeenCalledWith("dubidoc");
+  });
+
+  it("marks signed when owner+participants signed despite state stuck at 'sent'", async () => {
+    mockQueryResult.rows = [{ id: "act-stuck", edoDocId: "doc-stuck", paymentId: "pay-stuck" }];
+    mockGetStatus.mockResolvedValueOnce({
+      id: "doc-stuck",
+      status: "signed",
+      state: "sent",
+      currentUser: { role: "ROLE_OWNER", status: "signed" },
+    });
+    mockGetParticipants.mockResolvedValueOnce([
+      { status: "signed", role: "DOCUMENT_SIGNER", isSignatureRequired: true, priority: 1 },
+    ]);
+
+    const result = await pollDubidocStatuses();
+    expect(result.signed).toBe(1);
+    expect(mockGetParticipants).toHaveBeenCalledWith("doc-stuck");
   });
 
   it("maps archived status to deleted", async () => {
@@ -110,7 +133,7 @@ describe("pollDubidocStatuses", () => {
       { id: "act-6", edoDocId: "doc-6", paymentId: "pay-6" },
       { id: "act-7", edoDocId: "doc-7", paymentId: "pay-7" },
     ];
-    mockGetStatus.mockResolvedValueOnce({ id: "doc-6", status: "signed" });
+    mockGetStatus.mockResolvedValueOnce({ id: "doc-6", status: "signed", state: "signed" });
     mockGetStatus.mockRejectedValueOnce(new Error("fail"));
 
     const result = await pollDubidocStatuses();

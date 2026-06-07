@@ -18,6 +18,7 @@ import {
   deleteSigningLinks,
   DubiDocApiError,
   generateSigningLink,
+  getDocumentParticipants,
   getDocumentStatus,
   sendDocument,
 } from "@/lib/external-apis/dubidoc";
@@ -208,7 +209,8 @@ export async function refreshDubidocStatusAction(
 
   try {
     const response = await getDocumentStatus(act.edoDocId);
-    const patch = mapDubidocStatus(response);
+    const edoDocId = act.edoDocId;
+    const patch = await mapDubidocStatus(response, () => getDocumentParticipants(edoDocId));
 
     await db
       .update(acts)

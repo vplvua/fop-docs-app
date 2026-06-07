@@ -6,6 +6,7 @@ import { payments } from "@/lib/db/schema/payments";
 import {
   DubiDocApiError,
   type DocumentStatusResponse,
+  getDocumentParticipants,
   getDocumentStatus,
 } from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
@@ -41,10 +42,11 @@ async function resetActToDraft(actId: string): Promise<void> {
 
 async function applyStatusUpdate(
   actId: string,
+  edoDocId: string,
   paymentId: string,
   response: DocumentStatusResponse,
 ): Promise<StatusOutcome> {
-  const patch = mapDubidocStatus(response);
+  const patch = await mapDubidocStatus(response, () => getDocumentParticipants(edoDocId));
 
   await db
     .update(acts)
@@ -79,7 +81,7 @@ async function pollSingleAct(act: {
 
   try {
     const response = await getDocumentStatus(act.edoDocId);
-    const outcome = await applyStatusUpdate(act.id, act.paymentId, response);
+    const outcome = await applyStatusUpdate(act.id, act.edoDocId, act.paymentId, response);
 
     if (outcome !== "unchanged") {
       logger.info(
