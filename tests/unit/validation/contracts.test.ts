@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createContractSchema, updateContractSchema } from "@/lib/validation/contracts";
+import {
+  contractFormSchema,
+  createContractSchema,
+  updateContractSchema,
+} from "@/lib/validation/contracts";
 
 describe("createContractSchema", () => {
   const valid = {
@@ -100,5 +104,38 @@ describe("updateContractSchema", () => {
   it("accepts valid signedDate", () => {
     const r = updateContractSchema.safeParse({ ...validId, signedDate: "2025-06-01" });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("contractFormSchema (client-side card form)", () => {
+  const valid = {
+    number: "123",
+    signedDate: "2026-01-15",
+    isStandard: true,
+    fileUrl: "",
+    notes: "",
+  };
+
+  it("accepts a valid contract form", () => {
+    expect(contractFormSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires a number", () => {
+    expect(contractFormSchema.safeParse({ ...valid, number: "" }).success).toBe(false);
+  });
+
+  it("requires a signedDate", () => {
+    expect(contractFormSchema.safeParse({ ...valid, signedDate: "" }).success).toBe(false);
+  });
+
+  it("rejects a malformed signedDate", () => {
+    expect(contractFormSchema.safeParse({ ...valid, signedDate: "15.01.2026" }).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts an empty fileUrl but rejects a malformed one", () => {
+    expect(contractFormSchema.safeParse({ ...valid, fileUrl: "" }).success).toBe(true);
+    expect(contractFormSchema.safeParse({ ...valid, fileUrl: "not-a-url" }).success).toBe(false);
   });
 });

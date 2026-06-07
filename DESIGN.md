@@ -52,6 +52,8 @@ colors:
   semantic-warning: "#dd5b00"
   semantic-error: "#e03131"
   semantic-amber: "#f5a623"
+  toast-warning: "#eab308"
+  toast-warning-deep: "#854d0e"
 
 typography:
   hero-display:
@@ -532,6 +534,7 @@ The system uses a Notion-Sans typeface (Inter-based) across every UI surface —
 - **Warning** ({colors.semantic-warning}): Mid-priority alerts (orange)
 - **Error** ({colors.semantic-error}): Validation errors (red)
 - **Readiness amber** ({colors.semantic-amber}): brighter amber used **only** for the client act-readiness 🟡 status dot, so it reads distinctly from the 🔴 dot at small (10px) size — do not reuse for general warnings (use {colors.semantic-warning}).
+- **Toast warning** ({colors.toast-warning}, deep text {colors.toast-warning-deep}): a true yellow reserved for **warning toasts** (Sonner `toast.warning`), so cautions read as light yellow rather than the burnt-orange {colors.semantic-warning}. Rendered as a light tint background (`color-mix … 18%`) with {colors.toast-warning-deep} text for WCAG-AA contrast. Toast colours are themed in `globals.css` via `[data-sonner-toast][data-type=…]`, not via utility classes (Sonner's runtime styles outrank single Tailwind utilities).
 
 ## Typography
 

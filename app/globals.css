@@ -35,6 +35,8 @@
   --color-warning-deep: var(--warning-deep);
   --color-destructive-deep: var(--destructive-deep);
   --color-readiness-amber: var(--readiness-amber);
+  --color-toast-warning: var(--toast-warning);
+  --color-toast-warning-deep: var(--toast-warning-deep);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -87,6 +89,11 @@
   /* Brighter amber for the client act-readiness 🟡 dot only: warning #dd5b00 is a
      burnt orange too close to destructive #e03131 to tell apart at 10px (DESIGN.md). */
   --readiness-amber: #f5a623; /* colors.semantic-amber */
+  /* Toast-only warning yellow: a true yellow (distinct from the burnt-orange
+     --warning #dd5b00) so caution toasts read as light yellow, not orange.
+     --toast-warning-deep clears WCAG AA (≥4.5:1) as text on the light tint. */
+  --toast-warning: #eab308; /* warm yellow */
+  --toast-warning-deep: #854d0e; /* deep amber — readable on the yellow tint */
   --border: #e5e3df; /* colors.hairline */
   --input: #c8c4be; /* colors.hairline-strong */
   --ring: #5645d4; /* colors.primary (focus ring) */
@@ -160,4 +167,33 @@
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: -0.5px;
+}
+
+/* Sonner toast theming — semantic tokens, light tint + deep text. The doubled
+   attribute selectors ([data-sonner-toast][data-type=…]) outrank sonner's own
+   [data-sonner-toast] defaults, so the colours win regardless of injected-style
+   order (Tailwind utilities on the toast tied on specificity and lost). */
+[data-sonner-toast][data-type="success"] {
+  background: color-mix(in oklab, var(--success) 12%, var(--card));
+  border-color: color-mix(in oklab, var(--success) 35%, var(--card));
+  color: var(--success-deep);
+}
+[data-sonner-toast][data-type="error"] {
+  background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+  border-color: color-mix(in oklab, var(--destructive) 35%, var(--card));
+  color: var(--destructive-deep);
+}
+[data-sonner-toast][data-type="warning"] {
+  background: color-mix(in oklab, var(--toast-warning) 18%, var(--card));
+  border-color: color-mix(in oklab, var(--toast-warning) 50%, var(--card));
+  color: var(--toast-warning-deep);
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive);
+}
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--toast-warning);
 }

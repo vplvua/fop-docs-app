@@ -12,6 +12,7 @@ import { ClientActsTab, ClientPaymentsTab } from "./client-related";
 import { ClientSyncButton } from "./client-sync-button";
 import { ContractForm } from "./contract-form";
 import { TabNav } from "./tab-nav";
+import { UnsavedChangesProvider } from "./unsaved-changes-guard";
 
 type Payment = typeof payments.$inferSelect;
 type Act = typeof acts.$inferSelect;
@@ -96,18 +97,20 @@ export function ClientCard({
         </div>
       </div>
       {contract ? null : <ContractWarning />}
-      <div className="rounded-xl border border-border bg-card shadow-sm">
-        <TabNav clientId={client.id} active={activeTab} />
-        <div className="p-6">
-          <TabContent
-            tab={activeTab}
-            client={client}
-            contract={contract}
-            payments={payments}
-            acts={acts}
-          />
+      <UnsavedChangesProvider>
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <TabNav clientId={client.id} active={activeTab} />
+          <div className="p-6">
+            <TabContent
+              tab={activeTab}
+              client={client}
+              contract={contract}
+              payments={payments}
+              acts={acts}
+            />
+          </div>
         </div>
-      </div>
+      </UnsavedChangesProvider>
     </div>
   );
 }

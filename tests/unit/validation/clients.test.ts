@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createClientSchema, updateClientSchema } from "@/lib/validation/clients";
+import {
+  clientCardFormSchema,
+  clientUpdateSchema,
+  createClientSchema,
+  updateClientSchema,
+} from "@/lib/validation/clients";
 
 describe("createClientSchema", () => {
   const valid = { name: "ТОВ Тест", legalId: "12345678", email: "a@b.com" };
@@ -164,5 +169,70 @@ describe("updateClientSchema", () => {
       expect(r.data.apartmentsCount).toBe(139);
       expect(r.data.accessPriceOverride).toBeNull();
     }
+  });
+});
+
+describe("clientUpdateSchema (partial card update)", () => {
+  const id = "550e8400-e29b-41d4-a716-446655440000";
+
+  it("accepts a partial update with only one field (untouched fields absent)", () => {
+    const r = clientUpdateSchema.safeParse({ id, name: "ОСББ Сонячне" });
+    expect(r.success).toBe(true);
+  });
+
+  it("does not block on an empty required email (incomplete client)", () => {
+    const r = clientUpdateSchema.safeParse({ id, name: "ОСББ Сонячне", email: "" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.email).toBe("");
+  });
+
+  it("allows clearing a previously-set legalId to empty", () => {
+    const r = clientUpdateSchema.safeParse({ id, legalId: "" });
+    expect(r.success).toBe(true);
+  });
+
+  it("still rejects a malformed non-empty email", () => {
+    const r = clientUpdateSchema.safeParse({ id, email: "not-an-email" });
+    expect(r.success).toBe(false);
+  });
+
+  it("still rejects a malformed non-empty legalId", () => {
+    const r = clientUpdateSchema.safeParse({ id, legalId: "123" });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("clientCardFormSchema (client-side, presence never blocks)", () => {
+  const empty = {
+    name: "",
+    shortName: "",
+    legalId: "",
+    email: "",
+    address: "",
+    bankName: "",
+    bankAccount: "",
+    apartmentsCount: "",
+    accessPriceOverride: "",
+    edoProvider: "dubidoc" as const,
+    moeosbbUserId: "",
+  };
+
+  it("accepts an all-empty form (validation never blocks on missing values)", () => {
+    expect(clientCardFormSchema.safeParse(empty).success).toBe(true);
+  });
+
+  it("rejects a malformed email when filled", () => {
+    const r = clientCardFormSchema.safeParse({ ...empty, email: "nope" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts a valid email and legalId when filled", () => {
+    const r = clientCardFormSchema.safeParse({ ...empty, email: "a@b.com", legalId: "12345678" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects a non-numeric apartmentsCount", () => {
+    const r = clientCardFormSchema.safeParse({ ...empty, apartmentsCount: "ten" });
+    expect(r.success).toBe(false);
   });
 });

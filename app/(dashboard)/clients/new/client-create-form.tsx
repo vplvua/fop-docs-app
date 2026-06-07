@@ -63,7 +63,7 @@ function RequiredFields({ prefill, fe }: { prefill: Props["prefill"]; fe: FE }) 
         hint="8 цифр (ЄДРПОУ) або 10 цифр (РНОКПП)"
       />
       <ClientField id="email" label="Email" type="email" error={fe?.email} required />
-      <ClientField id="address" label="Адреса" error={fe?.address} />
+      <ClientField id="address" label="Адреса" error={fe?.address} required />
     </div>
   );
 }
@@ -71,8 +71,8 @@ function RequiredFields({ prefill, fe }: { prefill: Props["prefill"]; fe: FE }) 
 function OptionalFields({ fe }: { fe: FE }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <ClientField id="bankName" label="Назва банку" error={fe?.bankName} />
-      <ClientField id="bankAccount" label="IBAN" error={fe?.bankAccount} />
+      <ClientField id="bankName" label="Назва банку" error={fe?.bankName} required />
+      <ClientField id="bankAccount" label="IBAN" error={fe?.bankAccount} required />
       <ClientField
         id="apartmentsCount"
         label="Кількість квартир"

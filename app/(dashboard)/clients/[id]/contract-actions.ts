@@ -6,9 +6,17 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { contracts } from "@/lib/db/schema/contracts";
 import { logger } from "@/lib/logging";
-import { createContractSchema, updateContractSchema } from "@/lib/validation/contracts";
+import {
+  CONTRACT_FORM_FIELDS,
+  type ContractFormValues,
+  createContractSchema,
+  updateContractSchema,
+} from "@/lib/validation/contracts";
 
 import type { ClientActionState } from "../action-state";
+
+export type ContractCreatePayload = { clientId: string } & ContractFormValues;
+export type ContractUpdatePayload = { id: string } & Partial<ContractFormValues>;
 
 function extractFieldErrors(issues: { path: PropertyKey[]; message: string }[]) {
   const fieldErrors: Record<string, string> = {};
@@ -25,20 +33,8 @@ function formStr(fd: FormData, key: string): string | undefined {
   return v.trim();
 }
 
-export async function createContract(
-  _prev: ClientActionState,
-  formData: FormData,
-): Promise<ClientActionState> {
-  const raw = {
-    clientId: formStr(formData, "clientId"),
-    number: formStr(formData, "number"),
-    signedDate: formStr(formData, "signedDate"),
-    isStandard: formStr(formData, "isStandard"),
-    fileUrl: formStr(formData, "fileUrl"),
-    notes: formStr(formData, "notes"),
-  };
-
-  const parsed = createContractSchema.safeParse(raw);
+export async function createContract(payload: ContractCreatePayload): Promise<ClientActionState> {
+  const parsed = createContractSchema.safeParse(payload);
   if (!parsed.success) {
     return { status: "field_error", fieldErrors: extractFieldErrors(parsed.error.issues) };
   }
@@ -73,16 +69,13 @@ export async function createContract(
   return { status: "success", message: "Договір створено" };
 }
 
-export async function updateContract(
-  _prev: ClientActionState,
-  formData: FormData,
-): Promise<ClientActionState> {
-  const id = formStr(formData, "id");
+export async function updateContract(payload: ContractUpdatePayload): Promise<ClientActionState> {
+  const id = typeof payload.id === "string" ? payload.id.trim() : "";
   if (!id) return { status: "error", message: "Невірний ID" };
 
-  const raw: Record<string, string | undefined> = { id };
-  for (const key of ["number", "signedDate", "isStandard", "fileUrl", "notes"]) {
-    raw[key] = formStr(formData, key) ?? (formData.has(key) ? "" : undefined);
+  const raw: Record<string, unknown> = { id };
+  for (const key of CONTRACT_FORM_FIELDS) {
+    if (key in payload) raw[key] = payload[key];
   }
 
   const parsed = updateContractSchema.safeParse(raw);

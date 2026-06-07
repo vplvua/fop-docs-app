@@ -1,103 +1,120 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback, useEffect } from "react";
+import { useForm, type FieldErrors, type UseFormRegister } from "react-hook-form";
 
+import { toastError, toastSuccess } from "@/app/components/toast";
 import type { Client } from "@/lib/db/schema/clients";
+import {
+  CLIENT_CARD_FIELDS,
+  type ClientCardField,
+  type ClientCardFormValues,
+  clientCardFormSchema,
+} from "@/lib/validation/clients";
 
-import { initialClientActionState } from "../action-state";
-import { updateClient } from "../actions";
-import { ClientField } from "../client-field";
+import { updateClient, type ClientUpdatePayload } from "../actions";
 
-function SaveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex h-9 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending ? "Збереження…" : "Зберегти"}
-    </button>
-  );
+import { FormErrorSummary, SaveBar } from "./card-form-ui";
+import { RhfField } from "./rhf-field";
+import { useUnsavedChanges } from "./unsaved-changes-guard";
+
+type Register = UseFormRegister<ClientCardFormValues>;
+type Errors = FieldErrors<ClientCardFormValues>;
+
+function toFormValues(client: Client): ClientCardFormValues {
+  return {
+    name: client.name ?? "",
+    shortName: client.shortName ?? "",
+    legalId: client.legalId ?? "",
+    email: client.email ?? "",
+    address: client.address ?? "",
+    bankName: client.bankName ?? "",
+    bankAccount: client.bankAccount ?? "",
+    apartmentsCount: client.apartmentsCount?.toString() ?? "",
+    accessPriceOverride: client.accessPriceOverride ?? "",
+    edoProvider: client.edoProvider,
+    moeosbbUserId: client.moeosbbUserId?.toString() ?? "",
+  };
 }
 
-function SuccessAlert({ message }: { message: string }) {
-  return (
-    <div className="rounded-md border border-success/30 bg-success/5 p-3 text-sm text-success-deep">
-      {message}
-    </div>
-  );
-}
-
-function SyncFields({ client, fe }: { client: Client; fe: Record<string, string> | undefined }) {
+function SyncFields({ register, errors }: { register: Register; errors: Errors }) {
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium text-muted-foreground">🔄 Синхронізовані поля</legend>
       <div className="grid gap-4 sm:grid-cols-2">
-        <ClientField id="name" label="Назва" defaultValue={client.name} error={fe?.name} required />
-        <ClientField
-          id="legalId"
-          label="ЄДРПОУ / РНОКПП"
-          defaultValue={client.legalId}
-          error={fe?.legalId}
+        <RhfField
+          id="name"
+          label="Назва"
+          registration={register("name")}
+          error={errors.name?.message}
           required
         />
-        <ClientField
+        <RhfField
+          id="legalId"
+          label="ЄДРПОУ / РНОКПП"
+          registration={register("legalId")}
+          error={errors.legalId?.message}
+          required
+        />
+        <RhfField
           id="email"
           label="Email"
           type="email"
-          defaultValue={client.email}
-          error={fe?.email}
+          registration={register("email")}
+          error={errors.email?.message}
           required
         />
-        <ClientField
+        <RhfField
           id="address"
           label="Адреса"
-          defaultValue={client.address}
-          error={fe?.address}
+          registration={register("address")}
+          error={errors.address?.message}
+          required
         />
-        <ClientField
+        <RhfField
           id="bankName"
           label="Назва банку"
-          defaultValue={client.bankName}
-          error={fe?.bankName}
+          registration={register("bankName")}
+          error={errors.bankName?.message}
+          required
         />
-        <ClientField
+        <RhfField
           id="bankAccount"
           label="IBAN"
-          defaultValue={client.bankAccount}
-          error={fe?.bankAccount}
+          registration={register("bankAccount")}
+          error={errors.bankAccount?.message}
+          required
         />
       </div>
     </fieldset>
   );
 }
 
-function ManualFields({ client, fe }: { client: Client; fe: Record<string, string> | undefined }) {
+function ManualFields({ register, errors }: { register: Register; errors: Errors }) {
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium text-muted-foreground">⚙️ Manual only</legend>
       <div className="grid gap-4 sm:grid-cols-2">
-        <ClientField
+        <RhfField
           id="shortName"
           label="Коротка назва"
-          defaultValue={client.shortName}
-          error={fe?.shortName}
+          registration={register("shortName")}
+          error={errors.shortName?.message}
           hint="Для списків і назви в Дубідок; без юр. форми"
         />
-        <ClientField
+        <RhfField
           id="apartmentsCount"
           label="Кількість квартир"
           type="number"
-          defaultValue={client.apartmentsCount}
-          error={fe?.apartmentsCount}
+          registration={register("apartmentsCount")}
+          error={errors.apartmentsCount?.message}
         />
-        <ClientField
+        <RhfField
           id="accessPriceOverride"
           label="Індивідуальна ціна доступу"
-          defaultValue={client.accessPriceOverride}
-          error={fe?.accessPriceOverride}
+          registration={register("accessPriceOverride")}
+          error={errors.accessPriceOverride?.message}
         />
         <div className="space-y-1.5">
           <label htmlFor="edoProvider" className="block text-sm font-medium text-foreground">
@@ -105,9 +122,8 @@ function ManualFields({ client, fe }: { client: Client; fe: Record<string, strin
           </label>
           <select
             id="edoProvider"
-            name="edoProvider"
             aria-label="Канал ЕДО"
-            defaultValue={client.edoProvider}
+            {...register("edoProvider")}
             className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="dubidoc">Дубідок</option>
@@ -117,12 +133,12 @@ function ManualFields({ client, fe }: { client: Client; fe: Record<string, strin
             Зміна каналу ЕДО не переоформлює вже згенеровані акти.
           </p>
         </div>
-        <ClientField
+        <RhfField
           id="moeosbbUserId"
           label="ID у Моє ОСББ"
           type="number"
-          defaultValue={client.moeosbbUserId}
-          error={fe?.moeosbbUserId}
+          registration={register("moeosbbUserId")}
+          error={errors.moeosbbUserId?.message}
         />
       </div>
     </fieldset>
@@ -130,18 +146,76 @@ function ManualFields({ client, fe }: { client: Client; fe: Record<string, strin
 }
 
 export function ClientInfoForm({ client }: { client: Client }) {
-  const [state, formAction] = useActionState(updateClient, initialClientActionState);
-  const fe = state.fieldErrors;
+  const guard = useUnsavedChanges();
+  const form = useForm<ClientCardFormValues>({
+    resolver: zodResolver(clientCardFormSchema),
+    defaultValues: toFormValues(client),
+    mode: "onTouched",
+  });
+  const { register, formState, reset, setError, setFocus, handleSubmit } = form;
+  const { errors, dirtyFields, isDirty, isSubmitting } = formState;
+
+  const save = useCallback(
+    async (values: ClientCardFormValues): Promise<boolean> => {
+      const payload: ClientUpdatePayload = { id: client.id };
+      for (const key of CLIENT_CARD_FIELDS) {
+        if (dirtyFields[key]) payload[key] = values[key];
+      }
+      const res = await updateClient(payload);
+      if (res.status === "success") {
+        toastSuccess(res.message ?? "Збережено");
+        reset(values);
+        return true;
+      }
+      if (res.status === "field_error" && res.fieldErrors) {
+        const fieldErrors = res.fieldErrors;
+        const keys = Object.keys(fieldErrors) as ClientCardField[];
+        for (const k of keys) {
+          const message = fieldErrors[k];
+          if (message) setError(k, { message });
+        }
+        if (keys[0]) setFocus(keys[0]);
+        toastError("Не вдалося зберегти");
+        return false;
+      }
+      toastError(res.message ?? "Не вдалося зберегти");
+      return false;
+    },
+    [client.id, dirtyFields, reset, setError, setFocus],
+  );
+
+  const onInvalid = useCallback(() => toastError("Перевірте виділені поля"), []);
+  const onReset = useCallback(() => reset(), [reset]);
+
+  useEffect(() => {
+    guard.setDirty(isDirty);
+  }, [guard, isDirty]);
+
+  useEffect(() => {
+    guard.registerHandle({
+      submit: async () => {
+        let ok = false;
+        await handleSubmit(
+          async (values) => {
+            ok = await save(values);
+          },
+          () => {
+            ok = false;
+          },
+        )();
+        return ok;
+      },
+      reset: onReset,
+    });
+    return () => guard.registerHandle(null);
+  }, [guard, handleSubmit, save, onReset]);
 
   return (
-    <form action={formAction} className="space-y-6">
-      <input type="hidden" name="id" value={client.id} />
-      <SyncFields client={client} fe={fe} />
-      <ManualFields client={client} fe={fe} />
-      {state.status === "success" && state.message ? (
-        <SuccessAlert message={state.message} />
-      ) : null}
-      <SaveButton />
+    <form onSubmit={handleSubmit(save, onInvalid)} className="space-y-6">
+      <FormErrorSummary count={Object.keys(errors).length} />
+      <SyncFields register={register} errors={errors} />
+      <ManualFields register={register} errors={errors} />
+      <SaveBar dirty={isDirty} saving={isSubmitting} onReset={onReset} />
     </form>
   );
 }

@@ -7,9 +7,18 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema/clients";
 import { logger } from "@/lib/logging";
-import { createClientSchema, updateClientSchema } from "@/lib/validation/clients";
+import {
+  CLIENT_CARD_FIELDS,
+  type ClientCardField,
+  type ClientUpdateInput,
+  clientUpdateSchema,
+  createClientSchema,
+} from "@/lib/validation/clients";
 
 import type { ClientActionState } from "./action-state";
+
+/** Partial update payload sent by the client card: id + only the dirty fields. */
+export type ClientUpdatePayload = { id: string } & Partial<Record<ClientCardField, string>>;
 
 function extractFieldErrors(issues: { path: PropertyKey[]; message: string }[]) {
   const fieldErrors: Record<string, string> = {};
@@ -84,32 +93,41 @@ export async function createClient(
   redirect(`/clients/${row?.id}`);
 }
 
-export async function updateClient(
-  _prev: ClientActionState,
-  formData: FormData,
-): Promise<ClientActionState> {
-  const id = formStr(formData, "id");
+/** Maps validated, present fields to a Drizzle SET object (empty → NULL where nullable). */
+function buildClientSetValues(fields: Omit<ClientUpdateInput, "id">): Record<string, unknown> {
+  const set: Record<string, unknown> = { updatedAt: sql`now()` };
+  if (fields.name !== undefined) set.name = fields.name;
+  if (fields.shortName !== undefined) set.shortName = fields.shortName || null;
+  if (fields.legalId !== undefined) set.legalId = fields.legalId;
+  if (fields.email !== undefined) set.email = fields.email;
+  if (fields.address !== undefined) set.address = fields.address;
+  if (fields.bankName !== undefined) set.bankName = fields.bankName || null;
+  if (fields.bankAccount !== undefined) set.bankAccount = fields.bankAccount || null;
+  if (fields.apartmentsCount !== undefined) set.apartmentsCount = fields.apartmentsCount;
+  if (fields.accessPriceOverride !== undefined)
+    set.accessPriceOverride = fields.accessPriceOverride || null;
+  if (fields.edoProvider !== undefined) set.edoProvider = fields.edoProvider;
+  if (fields.moeosbbUserId !== undefined) set.moeosbbUserId = fields.moeosbbUserId || null;
+  if (fields.autoActDisabled !== undefined) set.autoActDisabled = fields.autoActDisabled;
+  return set;
+}
+
+/**
+ * Partial client-card update. The payload carries only the dirty fields, so a
+ * field the operator did not touch is absent and left untouched — an empty
+ * required field (email/legal_id) never blocks the save. Non-empty values are
+ * format-validated; completeness is surfaced by the act-readiness indicator.
+ */
+export async function updateClient(payload: ClientUpdatePayload): Promise<ClientActionState> {
+  const id = typeof payload.id === "string" ? payload.id.trim() : "";
   if (!id) return { status: "error", message: "Невірний ID" };
 
-  const raw: Record<string, string | undefined> = { id };
-  for (const key of [
-    "name",
-    "shortName",
-    "legalId",
-    "email",
-    "address",
-    "bankName",
-    "bankAccount",
-    "apartmentsCount",
-    "accessPriceOverride",
-    "edoProvider",
-    "moeosbbUserId",
-    "autoActDisabled",
-  ]) {
-    raw[key] = formStr(formData, key) ?? (formData.has(key) ? "" : undefined);
+  const raw: Record<string, unknown> = { id };
+  for (const key of CLIENT_CARD_FIELDS) {
+    if (key in payload) raw[key] = payload[key] ?? "";
   }
 
-  const parsed = updateClientSchema.safeParse(raw);
+  const parsed = clientUpdateSchema.safeParse(raw);
   if (!parsed.success) {
     return { status: "field_error", fieldErrors: extractFieldErrors(parsed.error.issues) };
   }
@@ -129,22 +147,7 @@ export async function updateClient(
     }
   }
 
-  const setValues: Record<string, unknown> = { updatedAt: sql`now()` };
-  if (fields.name !== undefined) setValues.name = fields.name;
-  if (fields.shortName !== undefined) setValues.shortName = fields.shortName || null;
-  if (fields.legalId !== undefined) setValues.legalId = fields.legalId;
-  if (fields.email !== undefined) setValues.email = fields.email;
-  if (fields.address !== undefined) setValues.address = fields.address;
-  if (fields.bankName !== undefined) setValues.bankName = fields.bankName || null;
-  if (fields.bankAccount !== undefined) setValues.bankAccount = fields.bankAccount || null;
-  if (fields.apartmentsCount !== undefined) setValues.apartmentsCount = fields.apartmentsCount;
-  if (fields.accessPriceOverride !== undefined)
-    setValues.accessPriceOverride = fields.accessPriceOverride || null;
-  if (fields.edoProvider !== undefined) setValues.edoProvider = fields.edoProvider;
-  if (fields.moeosbbUserId !== undefined) setValues.moeosbbUserId = fields.moeosbbUserId || null;
-  if (fields.autoActDisabled !== undefined) setValues.autoActDisabled = fields.autoActDisabled;
-
-  await db.update(clients).set(setValues).where(eq(clients.id, clientId));
+  await db.update(clients).set(buildClientSetValues(fields)).where(eq(clients.id, clientId));
   logger.info({ event: "client.updated", clientId }, "client updated");
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients");
