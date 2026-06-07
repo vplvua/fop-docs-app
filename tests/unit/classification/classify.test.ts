@@ -42,6 +42,7 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     id: "client-1",
     moeosbbUserId: null,
     name: "ОСББ Тест",
+    shortName: null,
     legalId: "12345678",
     address: "вул. Тестова 1",
     bankName: "ПриватБанк",

@@ -20,6 +20,7 @@ export const clients = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     moeosbbUserId: bigint("moeosbb_user_id", { mode: "number" }).unique(),
     name: text("name").notNull(),
+    shortName: text("short_name"),
     legalId: text("legal_id").notNull(),
     address: text("address").notNull().default(""),
     bankName: text("bank_name"),

@@ -49,6 +49,12 @@ function RequiredFields({ prefill, fe }: { prefill: Props["prefill"]; fe: FE }) 
     <div className="grid gap-4 sm:grid-cols-2">
       <ClientField id="name" label="Назва" defaultValue={prefill.name} error={fe?.name} required />
       <ClientField
+        id="shortName"
+        label="Коротка назва"
+        error={fe?.shortName}
+        hint="Для списків і назви в Дубідок; без юр. форми"
+      />
+      <ClientField
         id="legalId"
         label="ЄДРПОУ / РНОКПП"
         defaultValue={prefill.legal_id}

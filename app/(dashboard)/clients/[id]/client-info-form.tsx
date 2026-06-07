@@ -80,6 +80,13 @@ function ManualFields({ client, fe }: { client: Client; fe: Record<string, strin
       <legend className="text-sm font-medium text-muted-foreground">⚙️ Manual only</legend>
       <div className="grid gap-4 sm:grid-cols-2">
         <ClientField
+          id="shortName"
+          label="Коротка назва"
+          defaultValue={client.shortName}
+          error={fe?.shortName}
+          hint="Для списків і назви в Дубідок; без юр. форми"
+        />
+        <ClientField
           id="apartmentsCount"
           label="Кількість квартир"
           type="number"

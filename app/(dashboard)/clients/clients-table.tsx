@@ -8,6 +8,7 @@ import {
   Td,
   Th,
 } from "@/app/components/data-table";
+import { displayClientName } from "@/lib/clients/display-name";
 import { computeReadiness, readinessMissingLabels, type Readiness } from "@/lib/clients/readiness";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Contract } from "@/lib/db/schema/contracts";
@@ -120,11 +121,13 @@ export function ClientsTable({
       </DataTableHead>
       <DataTableBody>
         {rows.map(({ clients: c, contracts: contract }) => (
-          <RowLink key={c.id} href={`/clients/${c.id}`} label={c.name}>
+          <RowLink key={c.id} href={`/clients/${c.id}`} label={displayClientName(c)}>
             <Td>
               <ReadinessDot {...computeReadiness(c, contract)} />
             </Td>
-            <Td className="font-medium">{c.name}</Td>
+            <Td className="font-medium" title={c.name}>
+              {displayClientName(c)}
+            </Td>
             <Td className="text-muted-foreground">{c.legalId}</Td>
             <Td className="text-muted-foreground">{c.apartmentsCount ?? "—"}</Td>
             <Td>

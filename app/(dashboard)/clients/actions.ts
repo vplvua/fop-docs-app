@@ -32,6 +32,7 @@ export async function createClient(
 ): Promise<ClientActionState> {
   const raw = {
     name: formStr(formData, "name"),
+    shortName: formStr(formData, "shortName"),
     legalId: formStr(formData, "legalId"),
     email: formStr(formData, "email"),
     address: formStr(formData, "address"),
@@ -65,6 +66,7 @@ export async function createClient(
     .insert(clients)
     .values({
       name: parsed.data.name,
+      shortName: parsed.data.shortName ?? null,
       legalId: parsed.data.legalId,
       email: parsed.data.email,
       address: parsed.data.address ?? "",
@@ -92,6 +94,7 @@ export async function updateClient(
   const raw: Record<string, string | undefined> = { id };
   for (const key of [
     "name",
+    "shortName",
     "legalId",
     "email",
     "address",
@@ -128,6 +131,7 @@ export async function updateClient(
 
   const setValues: Record<string, unknown> = { updatedAt: sql`now()` };
   if (fields.name !== undefined) setValues.name = fields.name;
+  if (fields.shortName !== undefined) setValues.shortName = fields.shortName || null;
   if (fields.legalId !== undefined) setValues.legalId = fields.legalId;
   if (fields.email !== undefined) setValues.email = fields.email;
   if (fields.address !== undefined) setValues.address = fields.address;

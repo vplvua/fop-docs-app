@@ -68,33 +68,39 @@ describe("buildServiceDescription", () => {
 });
 
 describe("buildClientSnapshot", () => {
-  it("extracts correct fields", () => {
-    const client: Client = {
-      id: "x",
-      moeosbbUserId: null,
+  const base: Client = {
+    id: "x",
+    moeosbbUserId: null,
+    name: "ОСББ Тест",
+    shortName: "Тест",
+    legalId: "12345678",
+    address: "вул. Тестова 1",
+    bankName: "ПриватБанк",
+    bankAccount: "UA1234",
+    email: "test@test.com",
+    apartmentsCount: 50,
+    accessPriceOverride: null,
+    autoActDisabled: false,
+    edoProvider: "dubidoc",
+    lastSyncAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it("extracts correct fields including the short name", () => {
+    expect(buildClientSnapshot(base)).toEqual({
       name: "ОСББ Тест",
-      legalId: "12345678",
-      address: "вул. Тестова 1",
-      bankName: "ПриватБанк",
-      bankAccount: "UA1234",
-      email: "test@test.com",
-      apartmentsCount: 50,
-      accessPriceOverride: null,
-      autoActDisabled: false,
-      edoProvider: "dubidoc",
-      lastSyncAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    const snap = buildClientSnapshot(client);
-    expect(snap).toEqual({
-      name: "ОСББ Тест",
+      shortName: "Тест",
       legalId: "12345678",
       address: "вул. Тестова 1",
       bankName: "ПриватБанк",
       bankAccount: "UA1234",
       email: "test@test.com",
     });
+  });
+
+  it("freezes null when the client has no short name", () => {
+    expect(buildClientSnapshot({ ...base, shortName: null }).shortName).toBeNull();
   });
 });
 

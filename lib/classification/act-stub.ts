@@ -42,6 +42,7 @@ export function buildServiceDescription(serviceType: ServiceType, names: Service
 export function buildClientSnapshot(client: Client): ClientSnapshot {
   return {
     name: client.name,
+    shortName: client.shortName,
     legalId: client.legalId,
     address: client.address,
     bankName: client.bankName,

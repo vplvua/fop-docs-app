@@ -137,9 +137,31 @@ Covers: FR-ACT-01.
 - **WHEN** classification succeeds but Chromium fails to render PDF
 - **THEN** the act SHALL exist with `status = draft` and `pdf_file_url = NULL`, and the admin SHALL be able to regenerate later
 
+### Requirement: Act client snapshot carries the short name
+
+At act creation the immutable client snapshot SHALL capture the client's `short_name`
+(as `shortName`, nullable) alongside the existing `name` and `legalId`. The frozen
+`shortName` SHALL be used to compose the DubiDoc document title (see `edo-dubidoc`),
+keeping the title consistent with the act as issued even if the client's short name later
+changes.
+
+Covers: BC-LEGAL-05.
+
+#### Scenario: Snapshot freezes the short name
+
+- **WHEN** an act is created for a client whose `short_name = "Молодіжний Новомосковськ"`
+- **THEN** the act's `client_snapshot` SHALL contain `shortName = "Молодіжний Новомосковськ"`
+
+#### Scenario: Snapshot freezes null when no short name
+
+- **WHEN** an act is created for a client whose `short_name` is NULL
+- **THEN** the act's `client_snapshot` SHALL contain `shortName = null`
+
 ### Requirement: Acts list page
 
 The system SHALL provide an `/acts` page displaying acts in a table with columns: act_date, number, client name, the linked client's `moeosbb_user_id` (or "—" when the client has none), service_type, amount, edo_provider, and status (badge). The amount column SHALL show the value thousands-separated with the currency unit in the column header (`Сума, ₴`); it SHALL NOT repeat the currency suffix in each cell.
+
+The client-name column ("Клієнт") SHALL show `displayClientName` of the **live** linked client (the short name when set, otherwise the full name), with the full name available as a hover tooltip. Because it reads the live client (joined via `acts.client_id → clients`), existing acts SHALL reflect the short name once the operator fills it; the DubiDoc title and PDF remain on the frozen snapshot.
 
 The list SHALL support:
 
@@ -157,6 +179,16 @@ Covers: FR-UI-06.
 
 - **WHEN** the admin navigates to `/acts`
 - **THEN** acts SHALL be displayed sorted by `act_date` descending, then `number` (page 1)
+
+#### Scenario: Client column shows the short name
+
+- **WHEN** the admin views an act whose linked client has `short_name = "Молодіжний Новомосковськ"`
+- **THEN** the "Клієнт" column SHALL show `"Молодіжний Новомосковськ"` with the full name as a hover tooltip, even for acts created before the short name was set
+
+#### Scenario: Client column falls back to full name
+
+- **WHEN** the admin views an act whose linked client has no `short_name`
+- **THEN** the "Клієнт" column SHALL show the client's full `name`
 
 #### Scenario: Filter by status
 

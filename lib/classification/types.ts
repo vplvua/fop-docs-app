@@ -25,6 +25,7 @@ export type ServiceType = "access" | "sms";
 
 export interface ClientSnapshot {
   name: string;
+  shortName: string | null;
   legalId: string;
   address: string;
   bankName: string | null;

@@ -78,6 +78,24 @@ describe("createClientSchema", () => {
     if (r.success) expect(r.data.moeosbbUserId).toBeNull();
   });
 
+  it("trims and keeps a non-empty short name", () => {
+    const r = createClientSchema.safeParse({ ...valid, shortName: "  Молодіжний  " });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.shortName).toBe("Молодіжний");
+  });
+
+  it("normalizes an empty short name to null", () => {
+    const r = createClientSchema.safeParse({ ...valid, shortName: "" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.shortName).toBeNull();
+  });
+
+  it("normalizes a whitespace-only short name to null", () => {
+    const r = createClientSchema.safeParse({ ...valid, shortName: "   " });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.shortName).toBeNull();
+  });
+
   it("accepts valid edoProvider", () => {
     expect(
       createClientSchema.safeParse({ ...valid, edoProvider: "vchasno_external" }).success,
@@ -124,6 +142,15 @@ describe("updateClientSchema", () => {
       legalId: "123",
     });
     expect(r.success).toBe(false);
+  });
+
+  it("normalizes a cleared short name to null", () => {
+    const r = updateClientSchema.safeParse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      shortName: "",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.shortName).toBeNull();
   });
 
   it("accepts an empty accessPriceOverride alongside other edited fields", () => {

@@ -50,7 +50,11 @@ export default async function ClientsPage({ searchParams }: Props) {
 
   if (params.q) {
     const q = params.q;
-    const branches = [ilike(clients.name, `%${q}%`), ilike(clients.legalId, `${q}%`)];
+    const branches = [
+      ilike(clients.name, `%${q}%`),
+      ilike(clients.shortName, `%${q}%`),
+      ilike(clients.legalId, `${q}%`),
+    ];
     // All-digit query also matches a MoeOSBB id by substring (cast to text), so
     // partial ids behave like the name search.
     if (/^\d+$/u.test(q))

@@ -30,6 +30,15 @@ const accessPriceOverrideSchema = z
   )
   .optional();
 
+// Operator-curated short name: trim, and treat an empty/whitespace value as a
+// cleared field (null) so it never stores blank or whitespace.
+const shortNameSchema = z
+  .preprocess(
+    (v) => (typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v),
+    z.string().nullable(),
+  )
+  .optional();
+
 const moeosbbUserIdSchema = z
   .preprocess(
     emptyToNull,
@@ -39,6 +48,7 @@ const moeosbbUserIdSchema = z
 
 export const createClientSchema = z.object({
   name: z.string().min(1, "Введіть назву"),
+  shortName: shortNameSchema,
   legalId: legalIdSchema,
   email: emailSchema,
   address: z.string().optional(),
@@ -56,6 +66,7 @@ export type CreateClientInput = z.infer<typeof createClientSchema>;
 export const updateClientSchema = z.object({
   id: z.string().uuid("Невірний ID"),
   name: z.string().min(1, "Введіть назву").optional(),
+  shortName: shortNameSchema,
   legalId: legalIdSchema.optional(),
   email: emailSchema.optional(),
   address: z.string().optional(),

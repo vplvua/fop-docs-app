@@ -21,6 +21,7 @@ import {
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
 import { clients } from "@/lib/db/schema/clients";
+import { displayClientName } from "@/lib/clients/display-name";
 import type { ClientSnapshot } from "@/lib/classification/types";
 import {
   clampPage,
@@ -49,7 +50,11 @@ export const ACTS_COLUMNS = [
 ];
 
 // Act row + the linked client's MoeOSBB id (null when the client has none).
-type ActWithMoeosbb = typeof acts.$inferSelect & { moeosbbUserId: number | null };
+type ActWithMoeosbb = typeof acts.$inferSelect & {
+  moeosbbUserId: number | null;
+  clientName: string | null;
+  clientShortName: string | null;
+};
 
 // Allow-listed sort key → column. Mirrors `actsTableQuery.sortable`.
 const SORT_COLUMNS = {
@@ -151,7 +156,12 @@ export default async function ActsPage({ searchParams }: Props) {
     query.sort === "actDate" ? [primary, asc(acts.number), asc(acts.id)] : [primary, asc(acts.id)];
 
   const rows = await db
-    .select({ ...getTableColumns(acts), moeosbbUserId: clients.moeosbbUserId })
+    .select({
+      ...getTableColumns(acts),
+      moeosbbUserId: clients.moeosbbUserId,
+      clientName: clients.name,
+      clientShortName: clients.shortName,
+    })
     .from(acts)
     .leftJoin(clients, eq(acts.clientId, clients.id))
     .where(where)
@@ -331,13 +341,19 @@ function ActsTable({ rows, sort, dir }: { rows: ActWithMoeosbb[]; sort: string; 
 }
 
 function ActRow({ act }: { act: ActWithMoeosbb }) {
-  const client = act.clientSnapshot as ClientSnapshot;
+  const snapshot = act.clientSnapshot as ClientSnapshot;
+  // Show the live client name (so existing acts pick up a later-added short
+  // name); fall back to the frozen snapshot if the join is somehow empty.
+  const fullName = act.clientName ?? snapshot.name;
+  const displayName = displayClientName({ name: fullName, shortName: act.clientShortName });
 
   return (
-    <RowLink href={`/acts/${act.id}`} label={`Акт ${act.number}`} tooltip={client.name}>
+    <RowLink href={`/acts/${act.id}`} label={`Акт ${act.number}`} tooltip={fullName}>
       <Td className="whitespace-nowrap">{act.actDate}</Td>
       <Td className="whitespace-nowrap">{act.number}</Td>
-      <Td className="max-w-xs truncate">{client.name}</Td>
+      <Td className="max-w-xs truncate" title={fullName}>
+        {displayName}
+      </Td>
       <Td className="tabular-nums text-muted-foreground">{act.moeosbbUserId ?? "—"}</Td>
       <Td>{SERVICE_TYPE_LABELS[act.serviceType] ?? act.serviceType}</Td>
       <Td className="tabular-nums">{formatAmount(act.amount)}</Td>

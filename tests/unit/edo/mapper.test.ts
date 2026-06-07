@@ -57,9 +57,47 @@ describe("actToCreateDocumentPayload", () => {
 
     expect(payload.date).toBe("2026-05-31");
     expect(payload.number).toBe("05/2026/2");
-    expect(payload.title).toBe("Акт 05/2026/2 від 2026-05-31");
+    // No short name on this snapshot → title falls back to the full name.
+    expect(payload.title).toBe("ОСББ Тест 556770 Акт 05/2026/2 від 2026-05-31");
     // act_<contract>_<YYYY-MM>[_N].pdf — contract 556770, 2nd act of the month.
     expect(payload.filename).toBe("act_556770_2026-05_2.pdf");
+  });
+
+  it("uses the short name and bare contract number in the title when present", () => {
+    const act = makeAct({
+      number: "02/2026",
+      actDate: "2026-02-28",
+      clientSnapshot: {
+        name: "ОСББ «Молодіжний Новомосковськ»",
+        shortName: "Молодіжний Новомосковськ",
+        legalId: "12345678",
+        address: "вул. Тестова, 1",
+        bankName: null,
+        bankAccount: null,
+        email: "test@example.com",
+      },
+      contractSnapshot: { number: "556848", signedDate: "2025-01-01" },
+    });
+    const payload = actToCreateDocumentPayload(act, "base64");
+
+    expect(payload.title).toBe("Молодіжний Новомосковськ 556848 Акт 02/2026 від 2026-02-28");
+  });
+
+  it("falls back to the full name when the short name is whitespace only", () => {
+    const act = makeAct({
+      clientSnapshot: {
+        name: "ОСББ «Зоря»",
+        shortName: "   ",
+        legalId: "12345678",
+        address: "вул. Тестова, 1",
+        bankName: null,
+        bankAccount: null,
+        email: "test@example.com",
+      },
+    });
+    const payload = actToCreateDocumentPayload(act, "base64");
+
+    expect(payload.title).toContain("ОСББ «Зоря» 556770 Акт");
   });
 
   it("sends amount in kopiykas from the stored paid total", () => {

@@ -46,6 +46,12 @@ describe("auto-creation field mapping", () => {
     expect(Number("631")).toBe(631);
     expect(Number("1")).toBe(1);
   });
+
+  it("never maps shortName, so a sync update leaves the operator value untouched", () => {
+    // Protection by omission: the sync UPDATE is built from the mapper output;
+    // since `shortName` is absent, it is never overwritten.
+    expect(mapRemoteToClientFields(remote)).not.toHaveProperty("shortName");
+  });
 });
 
 describe("sync result shape", () => {
