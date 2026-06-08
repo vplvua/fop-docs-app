@@ -161,6 +161,16 @@ export function EdoStatusBanners({
     );
   }
 
+  if (status === "deleted") {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+        <p className="text-sm font-medium text-destructive-deep">
+          Документ видалено або анульовано в Дубідок. Можна перегенерувати та надіслати знову.
+        </p>
+      </div>
+    );
+  }
+
   if (status === "signed") {
     return (
       <div className="rounded-lg border border-success/30 bg-success/5 px-4 py-3">

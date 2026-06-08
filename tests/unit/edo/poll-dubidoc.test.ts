@@ -84,12 +84,26 @@ describe("pollDubidocStatuses", () => {
     expect(mockGetParticipants).toHaveBeenCalledWith("doc-stuck");
   });
 
-  it("maps archived status to deleted", async () => {
+  it("maps cancelled status to deleted (keeps payment)", async () => {
     mockQueryResult.rows = [{ id: "act-2", edoDocId: "doc-2", paymentId: "pay-2" }];
-    mockGetStatus.mockResolvedValueOnce({ id: "doc-2", status: "new", archived: true });
+    mockGetStatus.mockResolvedValueOnce({ id: "doc-2", status: "cancelled", state: "sent" });
 
     const result = await pollDubidocStatuses();
     expect(result.deleted).toBe(1);
+  });
+
+  it("archived document is NOT deleted — derives to signed via fast-path", async () => {
+    mockQueryResult.rows = [{ id: "act-arch", edoDocId: "doc-arch", paymentId: "pay-arch" }];
+    mockGetStatus.mockResolvedValueOnce({
+      id: "doc-arch",
+      status: "signed",
+      state: "signed",
+      archived: true,
+    });
+
+    const result = await pollDubidocStatuses();
+    expect(result.signed).toBe(1);
+    expect(result.deleted).toBe(0);
   });
 
   it("maps refused status", async () => {
@@ -118,12 +132,12 @@ describe("pollDubidocStatuses", () => {
     expect(mockRecordError).toHaveBeenCalled();
   });
 
-  it("resets act to draft when document deleted (404)", async () => {
+  it("marks act deleted (keeps payment) when document deleted (404)", async () => {
     mockQueryResult.rows = [{ id: "act-404", edoDocId: "doc-404", paymentId: "pay-404" }];
     mockGetStatus.mockRejectedValueOnce(new DubiDocApiError(404, "DubiDoc API error: 404"));
 
     const result = await pollDubidocStatuses();
-    expect(result.reset).toBe(1);
+    expect(result.deleted).toBe(1);
     expect(result.errors).toBe(0);
     expect(mockRecordSuccess).toHaveBeenCalledWith("dubidoc");
   });

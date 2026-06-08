@@ -15,8 +15,12 @@ export interface SendResult {
 
 function shouldSkip(act: Act): SendResult | null {
   if (act.edoProvider !== "dubidoc") return { sent: false, skipped: true };
-  if (act.status !== "draft") return { sent: false, skipped: true };
-  if (act.edoDocId) return { sent: false, skipped: true };
+  // `draft` = never sent; `deleted` = removed in DubiDoc (deleted/cancelled) and
+  // awaiting re-send. Both are valid starting points for a fresh document.
+  if (act.status !== "draft" && act.status !== "deleted") return { sent: false, skipped: true };
+  // A `draft` act must not already hold a hash (idempotency). A `deleted` act may
+  // still carry a stale hash; that is cleared before sending, so don't skip it.
+  if (act.status === "draft" && act.edoDocId) return { sent: false, skipped: true };
   return null;
 }
 
@@ -34,11 +38,15 @@ export async function sendActToDubidoc(actId: string): Promise<SendResult> {
     const payload = actToCreateDocumentPayload(act, pdfBase64);
     const response = await createDocument(payload);
 
+    // A fresh document — overwrite any prior hash/status (re-send of a removed
+    // act "forgets" the old DubiDoc document). Lands in `sent_to_edo` awaiting
+    // the FOP's signature; never auto-signs.
     await db
       .update(acts)
       .set({
         status: "sent_to_edo",
         edoDocId: response.id,
+        edoStatus: null,
         sentToEdoAt: sql`now()`,
         updatedAt: sql`now()`,
       })

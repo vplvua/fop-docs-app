@@ -21,19 +21,28 @@ vi.mock("@/lib/db", () => {
 
 vi.mock("@/lib/acts/generate-pdf", () => ({
   triggerPdfGeneration: vi.fn().mockResolvedValue(undefined),
+  generateAndStoreActPdf: vi.fn().mockResolvedValue(Buffer.from("pdf")),
+}));
+
+vi.mock("@/lib/acts/refresh-snapshots", () => ({
+  refreshActSnapshots: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/edo/send-to-dubidoc", () => ({
   sendActToDubidoc: vi.fn(),
 }));
 
-vi.mock("@/lib/external-apis/dubidoc", () => ({
-  getDocumentStatus: vi.fn(),
-  getDocumentParticipants: vi.fn(() => Promise.resolve([])),
-  generateSigningLink: vi.fn(),
-  deleteSigningLinks: vi.fn(),
-  sendDocument: vi.fn(),
-}));
+vi.mock("@/lib/external-apis/dubidoc", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/external-apis/dubidoc")>();
+  return {
+    ...actual,
+    getDocumentStatus: vi.fn(),
+    getDocumentParticipants: vi.fn(() => Promise.resolve([])),
+    generateSigningLink: vi.fn(),
+    deleteSigningLinks: vi.fn(),
+    sendDocument: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/edo/poll-dubidoc", () => ({
   pollDubidocStatuses: vi.fn(),
@@ -42,6 +51,7 @@ vi.mock("@/lib/edo/poll-dubidoc", () => ({
 import { sendActToDubidoc } from "@/lib/edo/send-to-dubidoc";
 import {
   deleteSigningLinks,
+  DubiDocApiError,
   generateSigningLink,
   getDocumentStatus,
   sendDocument,
@@ -49,11 +59,13 @@ import {
 import {
   retryDubidocSendAction,
   refreshDubidocStatusAction,
+  regeneratePdfAction,
   getSigningLinkAction,
   revokeSigningLinkAction,
   finalizeInAppSigningAction,
 } from "@/app/(dashboard)/acts/[id]/act-actions";
 import { triggerDubidocPollAction } from "@/app/(dashboard)/dashboard-actions";
+import { refreshActSnapshots } from "@/lib/acts/refresh-snapshots";
 import { pollDubidocStatuses } from "@/lib/edo/poll-dubidoc";
 
 const mockSend = vi.mocked(sendActToDubidoc);
@@ -112,6 +124,24 @@ describe("refreshDubidocStatusAction", () => {
   it("returns ok on successful refresh", async () => {
     mockDbResult.rows = [{ edoDocId: "doc-1", status: "sent_to_edo", edoProvider: "dubidoc" }];
     mockGetStatus.mockResolvedValueOnce({ id: "doc-1", status: "signed" });
+
+    const result = await refreshDubidocStatusAction("act-1");
+    expect(result.ok).toBe(true);
+  });
+
+  it("marks act removed on 404 (document deleted before signing)", async () => {
+    mockDbResult.rows = [{ edoDocId: "doc-1", status: "sent_to_edo", edoProvider: "dubidoc" }];
+    mockGetStatus.mockRejectedValueOnce(new DubiDocApiError(404, "not found"));
+
+    const result = await refreshDubidocStatusAction("act-1");
+    expect(result.ok).toBe(true);
+  });
+
+  it("marks act removed when document cancelled (анульовано)", async () => {
+    mockDbResult.rows = [
+      { edoDocId: "doc-1", status: "waiting_for_client_sign", edoProvider: "dubidoc" },
+    ];
+    mockGetStatus.mockResolvedValueOnce({ id: "doc-1", status: "cancelled", state: "sent" });
 
     const result = await refreshDubidocStatusAction("act-1");
     expect(result.ok).toBe(true);
@@ -282,6 +312,29 @@ describe("finalizeInAppSigningAction", () => {
   });
 });
 
+describe("regeneratePdfAction snapshot refresh", () => {
+  const mockRefresh = vi.mocked(refreshActSnapshots);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbResult.rows = [];
+  });
+
+  it("refreshes snapshots for an editable (deleted) act before rendering", async () => {
+    mockDbResult.rows = [{ id: "act-1", edoProvider: "dubidoc", status: "deleted" }];
+    const result = await regeneratePdfAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockRefresh).toHaveBeenCalledWith("act-1");
+  });
+
+  it("does NOT refresh snapshots for a sent/signed act", async () => {
+    mockDbResult.rows = [{ id: "act-1", edoProvider: "dubidoc", status: "signed" }];
+    const result = await regeneratePdfAction("act-1");
+    expect(result.ok).toBe(true);
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+});
+
 describe("triggerDubidocPollAction", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -293,7 +346,6 @@ describe("triggerDubidocPollAction", () => {
       deleted: 0,
       refused: 1,
       unchanged: 2,
-      reset: 0,
       errors: 0,
     });
     const result = await triggerDubidocPollAction();

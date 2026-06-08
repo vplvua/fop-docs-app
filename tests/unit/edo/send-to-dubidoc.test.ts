@@ -105,6 +105,19 @@ describe("sendActToDubidoc", () => {
     expect(mockCreateDocument).not.toHaveBeenCalled();
   });
 
+  it("re-sends a removed (deleted) act despite a stale edo_doc_id", async () => {
+    // A removed act may still carry a stale hash; re-send must NOT skip it and
+    // creates a brand-new document (the old hash is forgotten on the success path).
+    mockDbResult.rows = [makeAct({ status: "deleted", edoDocId: "stale-hash" })];
+    mockMapper.mockReturnValueOnce({ file: "base64" } as never);
+    mockCreateDocument.mockResolvedValueOnce({ id: "doc-new", status: "new" });
+
+    const result = await sendActToDubidoc("act-001");
+    expect(result.sent).toBe(true);
+    expect(result.skipped).toBe(false);
+    expect(mockCreateDocument).toHaveBeenCalled();
+  });
+
   it("sends to DubiDoc on success path", async () => {
     mockDbResult.rows = [makeAct()];
     mockMapper.mockReturnValueOnce({ file: "base64" } as never);

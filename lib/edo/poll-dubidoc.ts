@@ -2,7 +2,6 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { acts, EDO_PENDING_STATUSES } from "@/lib/db/schema/acts";
-import { payments } from "@/lib/db/schema/payments";
 import {
   DubiDocApiError,
   type DocumentStatusResponse,
@@ -21,17 +20,23 @@ export interface PollResult {
   deleted: number;
   refused: number;
   unchanged: number;
-  reset: number;
   errors: number;
 }
 
-type StatusOutcome = "signed" | "waiting" | "deleted" | "refused" | "unchanged" | "reset";
+type StatusOutcome = "signed" | "waiting" | "deleted" | "refused" | "unchanged";
 
-async function resetActToDraft(actId: string): Promise<void> {
+/**
+ * Mark an act as removed in DubiDoc (deleted before signing → 404, or cancelled
+ * after signing → `status = "cancelled"`). The act and its payment are KEPT (the
+ * payment ↔ act pairing survives) so the act can be re-sent; the prior hash is
+ * forgotten so a fresh document is created on re-send. Removed acts are excluded
+ * from `EDO_PENDING_STATUSES`, so polling stops until they are re-sent.
+ */
+async function markActRemoved(actId: string): Promise<void> {
   await db
     .update(acts)
     .set({
-      status: "draft",
+      status: "deleted",
       edoDocId: null,
       edoStatus: null,
       sentToEdoAt: null,
@@ -43,10 +48,16 @@ async function resetActToDraft(actId: string): Promise<void> {
 async function applyStatusUpdate(
   actId: string,
   edoDocId: string,
-  paymentId: string,
   response: DocumentStatusResponse,
 ): Promise<StatusOutcome> {
   const patch = await mapDubidocStatus(response, () => getDocumentParticipants(edoDocId));
+
+  // A cancelled DubiDoc document removes the act's live copy but keeps the act
+  // and its payment so it can be re-sent — no payment-freeing/re-classification.
+  if (patch.status === "deleted") {
+    await markActRemoved(actId);
+    return "deleted";
+  }
 
   await db
     .update(acts)
@@ -57,15 +68,6 @@ async function applyStatusUpdate(
     })
     .where(eq(acts.id, actId));
 
-  // An archived DubiDoc document deletes the act and frees its payment for
-  // re-classification (FR-EDGE-01).
-  if (patch.status === "deleted") {
-    await db
-      .update(payments)
-      .set({ actId: null, status: "received", updatedAt: sql`now()` })
-      .where(eq(payments.id, paymentId));
-    return "deleted";
-  }
   if (patch.status === "signed") return "signed";
   if (patch.status === "waiting_for_client_sign") return "waiting";
   if (patch.edoStatus === "refused") return "refused";
@@ -81,7 +83,7 @@ async function pollSingleAct(act: {
 
   try {
     const response = await getDocumentStatus(act.edoDocId);
-    const outcome = await applyStatusUpdate(act.id, act.edoDocId, act.paymentId, response);
+    const outcome = await applyStatusUpdate(act.id, act.edoDocId, response);
 
     if (outcome !== "unchanged") {
       logger.info(
@@ -92,12 +94,12 @@ async function pollSingleAct(act: {
     return outcome;
   } catch (err) {
     if (err instanceof DubiDocApiError && err.statusCode === 404) {
-      await resetActToDraft(act.id);
+      await markActRemoved(act.id);
       logger.info(
-        { event: "edo.act_reset", actId: act.id, edoDocId: act.edoDocId },
-        "DubiDoc document not found, act reset to draft",
+        { event: "edo.act_removed", actId: act.id, edoDocId: act.edoDocId },
+        "DubiDoc document not found, act marked removed",
       );
-      return "reset";
+      return "deleted";
     }
     const message = err instanceof Error ? err.message : "Unknown";
     logger.error(
@@ -116,7 +118,6 @@ function aggregateResults(outcomes: PromiseSettledResult<StatusOutcome | "error"
     deleted: 0,
     refused: 0,
     unchanged: 0,
-    reset: 0,
     errors: 0,
   };
 
@@ -165,7 +166,6 @@ export async function pollDubidocStatuses(): Promise<PollResult> {
       deleted: 0,
       refused: 0,
       unchanged: 0,
-      reset: 0,
       errors: 0,
     };
   }

@@ -26,7 +26,8 @@ export type ParticipantsFetcher = () => Promise<DocumentParticipant[]>;
  * - the **client** via `GET /documents/{id}/participants`.
  *
  * Order of evaluation:
- * 1. `archived` → `deleted`; `refused` → `refused` (overrides).
+ * 1. `status === "cancelled"` → `deleted` (the document was анульовано in DubiDoc);
+ *    `refused` → `refused` (overrides).
  * 2. `state === "signed"` fast-path → `signed` (no participants fetch).
  * 3. FOP not signed (`currentUser.status !== "signed"`) → `sent_to_edo` (no fetch).
  * 4. FOP signed → fetch participants: any `rejected` → `refused`; all required
@@ -35,6 +36,10 @@ export type ParticipantsFetcher = () => Promise<DocumentParticipant[]>;
  * `participantsFetcher` is invoked ONLY in step 4 so the extra call is bounded
  * to acts already past the FOP's signature.
  *
+ * `archived === true` is NOT a removal: it is a normal (typically signed)
+ * document filed into an archive folder, so it is left to derive its status via
+ * the signature branches below (→ `signed`) and the payment is never freed.
+ *
  * When `currentUser` is absent (older responses / mocks) it falls back to the
  * document-level `state`, then the org-relative `status`.
  */
@@ -42,8 +47,11 @@ export async function mapDubidocStatus(
   detail: DocumentStatusResponse,
   participantsFetcher: ParticipantsFetcher,
 ): Promise<DubidocStatusPatch> {
-  if (detail.archived) {
-    return { status: "deleted", edoStatus: "archived" };
+  // The document was cancelled (анульовано) in DubiDoc — the act's live copy is
+  // gone. One `deleted` state covers both cancellation and 404-deletion; the
+  // payment stays attached so the act can be re-sent (see send-to-dubidoc).
+  if (detail.status === "cancelled") {
+    return { status: "deleted", edoStatus: "cancelled" };
   }
   if (detail.refused) {
     return { edoStatus: "refused" };

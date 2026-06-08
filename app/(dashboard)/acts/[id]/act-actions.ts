@@ -7,6 +7,7 @@ import { deleteManualAct } from "@/lib/acts/delete-manual-act";
 import { generateAndStoreActPdf } from "@/lib/acts/generate-pdf";
 import { isEditableManualAct } from "@/lib/acts/manual-act-eligibility";
 import { manualActEditSchema, type ManualActEditInput } from "@/lib/acts/manual-act-schema";
+import { refreshActSnapshots } from "@/lib/acts/refresh-snapshots";
 import { updateManualAct } from "@/lib/acts/update-manual-act";
 import { db } from "@/lib/db";
 import { acts } from "@/lib/db/schema/acts";
@@ -24,17 +25,44 @@ import {
 } from "@/lib/external-apis/dubidoc";
 import { logger } from "@/lib/logging";
 
+/**
+ * Shared "the DubiDoc copy is gone" patch (deleted/cancelled). Keeps the act and
+ * its payment; forgets the prior hash so a fresh document is created on re-send.
+ */
+async function markActRemoved(actId: string): Promise<void> {
+  await db
+    .update(acts)
+    .set({
+      status: "deleted",
+      edoDocId: null,
+      edoStatus: null,
+      sentToEdoAt: null,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(acts.id, actId));
+}
+
 export async function regeneratePdfAction(actId: string): Promise<{ ok: boolean; error?: string }> {
   const [act] = await db
-    .select({ id: acts.id, edoProvider: acts.edoProvider })
+    .select({ id: acts.id, edoProvider: acts.edoProvider, status: acts.status })
     .from(acts)
     .where(eq(acts.id, actId))
     .limit(1);
   if (!act) return { ok: false, error: "Акт не знайдено" };
 
   try {
+    // Editable acts (never-sent draft, or removed-and-awaiting-resend) pull fresh
+    // client/contract data into their snapshots first, so corrections — and
+    // curated fields like the short name used for the DubiDoc title — flow into
+    // the regenerated PDF and the next send. Sent/signed acts are never touched.
+    if (act.status === "draft" || act.status === "deleted") {
+      await refreshActSnapshots(actId);
+    }
     await generateAndStoreActPdf(actId);
-    if (act.edoProvider === "dubidoc") {
+    // Auto-send only for a never-sent draft (first-send convenience). A removed
+    // act (`deleted`) is re-sent explicitly via the "Надіслати в Дубідок" button
+    // so the admin can review the regenerated PDF first.
+    if (act.edoProvider === "dubidoc" && act.status === "draft") {
       sendActToDubidoc(actId).catch(() => {});
     }
     return { ok: true };
@@ -56,7 +84,9 @@ export async function updateServiceDescriptionAction(
 
   if (!act) return { ok: false, error: "Акт не знайдено" };
 
-  const canEdit = act.status === "draft" || act.edoProvider === "vchasno_external";
+  // `deleted` = removed in DubiDoc and awaiting re-send → editable like a draft.
+  const canEdit =
+    act.status === "draft" || act.status === "deleted" || act.edoProvider === "vchasno_external";
   if (!canEdit) {
     return { ok: false, error: "Редагування заблоковано для цього статусу" };
   }
@@ -212,6 +242,12 @@ export async function refreshDubidocStatusAction(
     const edoDocId = act.edoDocId;
     const patch = await mapDubidocStatus(response, () => getDocumentParticipants(edoDocId));
 
+    // Cancelled (анульовано) in DubiDoc → remove the live copy, keep act+payment.
+    if (patch.status === "deleted") {
+      await markActRemoved(actId);
+      return { ok: true };
+    }
+
     await db
       .update(acts)
       .set({
@@ -223,17 +259,9 @@ export async function refreshDubidocStatusAction(
 
     return { ok: true };
   } catch (err) {
+    // Deleted before signing → 404. Mark removed (keep payment) so it can be re-sent.
     if (err instanceof DubiDocApiError && err.statusCode === 404) {
-      await db
-        .update(acts)
-        .set({
-          status: "draft",
-          edoDocId: null,
-          edoStatus: null,
-          sentToEdoAt: null,
-          updatedAt: sql`now()`,
-        })
-        .where(eq(acts.id, actId));
+      await markActRemoved(actId);
       return { ok: true };
     }
     return { ok: false, error: "Помилка оновлення статусу з Дубідок" };

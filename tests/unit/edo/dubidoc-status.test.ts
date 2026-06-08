@@ -79,12 +79,29 @@ describe("mapDubidocStatus", () => {
     ).toEqual({ status: "signed", edoStatus: "signed" });
   });
 
-  it("archived flag → deleted (override), no fetch", async () => {
+  it("status=cancelled → deleted (override), no fetch", async () => {
     const fetch = fetcher();
-    expect(
-      await mapDubidocStatus(detail({ state: "signed", status: "signed", archived: true }), fetch),
-    ).toEqual({ status: "deleted", edoStatus: "archived" });
+    expect(await mapDubidocStatus(detail({ state: "sent", status: "cancelled" }), fetch)).toEqual({
+      status: "deleted",
+      edoStatus: "cancelled",
+    });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("archived flag is NOT a removal → derives normally to signed", async () => {
+    // Archived = a normal signed document filed away, not a deletion.
+    const fetch = fetcher([participant({ status: "signed" })]);
+    expect(
+      await mapDubidocStatus(
+        detail({
+          state: "sent",
+          status: "signed",
+          archived: true,
+          currentUser: { role: "ROLE_OWNER", status: "signed" },
+        }),
+        fetch,
+      ),
+    ).toEqual({ status: "signed", edoStatus: "signed" });
   });
 
   it("refused flag → edo_status refused, lifecycle unchanged", async () => {
