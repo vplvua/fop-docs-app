@@ -4,6 +4,8 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
+import { clientLabel, type ContractClient } from "@/lib/acts/client-label";
+
 import { updateManualActAction } from "../[id]/act-actions";
 import { createManualActAction, manualActHintAction } from "./actions";
 
@@ -22,12 +24,7 @@ export interface ManualActEditConfig {
   };
 }
 
-export interface ContractClient {
-  id: string;
-  name: string;
-  legalId: string;
-  contractNumber: string;
-}
+export type { ContractClient } from "@/lib/acts/client-label";
 
 export const INPUT_CLASS =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -89,9 +86,7 @@ function ClientOption({
           className={`h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
           aria-hidden
         />
-        <span className="truncate">
-          {client.name} ({client.legalId})
-        </span>
+        <span className="truncate">{clientLabel(client)}</span>
       </button>
     </div>
   );
@@ -127,7 +122,7 @@ export function ClientCombobox({
     const q = query.trim().toLowerCase();
     if (!q) return clients;
     return clients.filter((c) =>
-      `${c.name} ${c.legalId} ${c.contractNumber}`.toLowerCase().includes(q),
+      `${c.name} ${c.shortName ?? ""} ${c.legalId} ${c.contractNumber}`.toLowerCase().includes(q),
     );
   }, [clients, query]);
 
@@ -189,7 +184,7 @@ export function ClientCombobox({
         className={`${INPUT_CLASS} flex cursor-not-allowed items-center opacity-70`}
         aria-label="Клієнт"
       >
-        {selected ? `${selected.name} (${selected.legalId})` : "—"}
+        {selected ? clientLabel(selected) : "—"}
       </div>
     );
   }
@@ -205,7 +200,7 @@ export function ClientCombobox({
         className={`${INPUT_CLASS} flex items-center justify-between gap-2 text-left`}
       >
         <span className={selected ? "truncate" : "truncate text-muted-foreground"}>
-          {selected ? `${selected.name} (${selected.legalId})` : "Оберіть клієнта"}
+          {selected ? clientLabel(selected) : "Оберіть клієнта"}
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>

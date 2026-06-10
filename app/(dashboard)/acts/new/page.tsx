@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
@@ -11,9 +11,15 @@ import { ManualActForm, type ContractClient } from "./manual-act-form";
 
 export const metadata = { title: "Створити акт вручну · ФОП Документи" };
 
+// Without this the page is prerendered at build time and the client picker
+// serves a frozen DB snapshot until the next deploy.
+export const dynamic = "force-dynamic";
+
 /**
- * Clients that have a contract — the only ones eligible for a manual act, since
- * the PDF preamble requires a `contract_snapshot` (D5).
+ * Active clients that have a contract — the only ones eligible for a manual act,
+ * since the PDF preamble requires a `contract_snapshot` (D5). Archived clients
+ * (`auto_act_disabled`) are excluded: MoeOSBB junk duplicates land there and
+ * would shadow the real client under the same EDRPOU.
  */
 async function loadContractClients(): Promise<ContractClient[]> {
   // Inner-join the contract so the picker can also search by contract number;
@@ -22,12 +28,17 @@ async function loadContractClients(): Promise<ContractClient[]> {
     .select({
       id: clients.id,
       name: clients.name,
+      shortName: clients.shortName,
       legalId: clients.legalId,
       contractNumber: contracts.number,
     })
     .from(contracts)
     .innerJoin(clients, eq(clients.id, contracts.clientId))
-    .orderBy(asc(clients.name));
+    .where(eq(clients.autoActDisabled, false))
+    .orderBy(
+      sql`nullif(${clients.shortName}, '') asc nulls last`,
+      sql`nullif(${clients.name}, '') asc nulls last`,
+    );
   return rows;
 }
 

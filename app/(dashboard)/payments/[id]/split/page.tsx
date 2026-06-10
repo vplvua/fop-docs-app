@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -28,13 +28,17 @@ function loadEligibleClients(payerLegalId: string | null): Promise<ContractClien
     .select({
       id: clients.id,
       name: clients.name,
+      shortName: clients.shortName,
       legalId: clients.legalId,
       contractNumber: contracts.number,
     })
     .from(contracts)
     .innerJoin(clients, eq(clients.id, contracts.clientId))
     .where(payerLegalId === null ? undefined : eq(clients.legalId, payerLegalId))
-    .orderBy(asc(clients.name));
+    .orderBy(
+      sql`nullif(${clients.shortName}, '') asc nulls last`,
+      sql`nullif(${clients.name}, '') asc nulls last`,
+    );
 }
 
 interface Props {

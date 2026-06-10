@@ -50,6 +50,7 @@ async function loadEditData(id: string) {
     .select({
       id: clients.id,
       name: clients.name,
+      shortName: clients.shortName,
       legalId: clients.legalId,
       contractNumber: contracts.number,
     })
